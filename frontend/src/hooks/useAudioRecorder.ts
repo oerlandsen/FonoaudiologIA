@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from 'react';
-import { createAudioUrl, revokeAudioUrl, formatDuration } from '../utils/audioUtils';
 
 interface UseAudioRecorderReturn {
   isRecording: boolean;
@@ -120,7 +119,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         // Create blob from chunks
         if (chunksRef.current.length > 0) {
           const blob = new Blob(chunksRef.current, {
-            type: mediaRecorderRef.current.mimeType || 'audio/webm'
+            type: mediaRecorderRef.current?.mimeType || 'audio/webm'
           });
           chunksRef.current = [];
           setIsRecording(false);
