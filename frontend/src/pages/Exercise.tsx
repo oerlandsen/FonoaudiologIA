@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import exampleService from '../services/exampleService';
 import {
   ArrowLeft,
   Mic,
@@ -49,12 +50,14 @@ export default function ExercisePage() {
   const navigate = useNavigate();
   const { step } = useParams<{ step: string }>();
   const currentStep = parseInt(step || '1');
-  const exercise = EXERCISES[currentStep];
+  const baseExercise = EXERCISES[currentStep];
 
+  const [exercise, setExercise] = useState(baseExercise);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isImageLoading, setIsImageLoading] = useState(true);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -65,9 +68,48 @@ export default function ExercisePage() {
     setRecordingUri(null);
     setIsRecording(false);
     setIsPlaying(false);
+    setIsImageLoading(true);
   }, [step, currentStep]);
 
   const Icon = exercise.icon;
+
+  // Cargar ejemplos aleatorios al iniciar
+  useEffect(() => {
+    const loadRandomExample = async () => {
+      setIsLoading(true);
+      try {
+        let type: 'read' | 'description' | 'question';
+        switch(baseExercise.type) {
+          case 'reading':
+            type = 'read';
+            break;
+          case 'description':
+            type = 'description';
+            break;
+          case 'question':
+            type = 'question';
+            break;
+          default:
+            type = 'read';
+        }
+
+        const randomContent = await exampleService.getRandomExample(type);
+        setExercise({
+          ...baseExercise,
+          content: randomContent
+        });
+      } catch (error) {
+        console.error('Error loading random example:', error);
+        // Usar el contenido por defecto si hay error
+        setExercise(baseExercise);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Cargar ejemplo aleatorio al iniciar y cuando cambia el paso
+    loadRandomExample();
+  }, [currentStep, baseExercise]);
 
   const startRecording = useCallback(async () => {
     try {
@@ -216,18 +258,20 @@ export default function ExercisePage() {
             <h3 className="text-base font-semibold text-gray-900 mb-3">
               {exercise.instruction}
             </h3>
-            {exercise.type === 'description' ? (
+
+            {isLoading ? (
+              <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500 flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+              </div>
+            ) : exercise.type === 'description' ? (
               <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500 flex justify-center relative min-h-[200px]">
                 {isImageLoading && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
                   </div>
                 )}
-                <img
-                  src={
-                    // Imagen ilustrativa para descripción; se puede reemplazar por un asset propio
-                    'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&q=80&auto=format&fit=crop'
-                  }
+                <img 
+                  src={exercise.content} 
                   alt="Imagen para describir"
                   className={`max-w-full h-auto rounded max-h-64 object-contain ${isImageLoading ? 'invisible' : 'visible'}`}
                   onLoad={() => setIsImageLoading(false)}
@@ -295,14 +339,11 @@ export default function ExercisePage() {
                 : 'Toca para comenzar a grabar'}
             </p>
 
-            {/* Re-record Button */}
+            {/* Mensaje informativo - Grabación finalizada */}
             {recordingUri && (
-              <button
-                onClick={() => setRecordingUri(null)}
-                className="mt-4 text-sm text-indigo-500 font-semibold"
-              >
-                Grabar de nuevo
-              </button>
+              <p className="mt-4 text-sm text-gray-500 italic">
+                Grabación finalizada. Ya no se puede volver a grabar.
+              </p>
             )}
           </div>
         </div>
