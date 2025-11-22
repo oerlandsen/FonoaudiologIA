@@ -1,19 +1,12 @@
 """Pydantic models for request/response validation."""
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 
 class HealthResponse(BaseModel):
     """Health check response model."""
 
     status: str = Field(..., description="Service status", example="healthy")
-
-
-class ExampleResponse(BaseModel):
-    """Example response model."""
-
-    message: str = Field(..., description="Response message", example="Hello from Marraqueta API")
-    item_id: int | None = Field(None, description="Item ID", example=1)
 
 
 class WordInfo(BaseModel):
@@ -25,6 +18,33 @@ class WordInfo(BaseModel):
     type: str = Field(..., description="Word type")
 
 
+class MetricScore(BaseModel):
+    """Individual metric score."""
+
+    raw: float = Field(..., description="Raw metric value")
+    score: float = Field(..., description="Normalized score (0-100)")
+
+
+class DimensionScores(BaseModel):
+    """Dimension scores aggregated from metrics."""
+
+    clarity: Optional[float] = Field(None, description="Clarity dimension score")
+    rhythm: Optional[float] = Field(None, description="Rhythm dimension score")
+    vocabulary: Optional[float] = Field(None, description="Vocabulary dimension score")
+
+    class Config:
+        """Allow extra fields for dynamic dimensions."""
+        extra = "allow"
+
+
+class MetricsResponse(BaseModel):
+    """Speech metrics response model."""
+
+    metrics: Dict[str, MetricScore] = Field(..., description="Individual metric scores")
+    dimensions: DimensionScores = Field(..., description="Aggregated dimension scores")
+    metadata: Dict = Field(..., description="Additional metadata")
+
+
 class TranscriptionResponse(BaseModel):
     """Transcription response model."""
 
@@ -32,4 +52,5 @@ class TranscriptionResponse(BaseModel):
     words: List[WordInfo] = Field(..., description="List of words with timing information")
     audio_s: Optional[float] = Field(None, description="Audio duration in seconds")
     n_words: Optional[int] = Field(None, description="Number of words")
+    metrics: Optional[MetricsResponse] = Field(None, description="Speech metrics (optional)")
 
