@@ -44,14 +44,28 @@ class MetricsResponse(BaseModel):
 
     metrics: Dict[str, MetricScore] = Field(..., description="Individual metric scores")
     dimensions: DimensionScores = Field(..., description="Aggregated dimension scores")
-    metadata: Dict = Field(..., description="Additional metadata")
+    
+    class Config:
+        """Pydantic config."""
+        json_schema_extra = {
+            "example": {
+                "metrics": {
+                    "words_per_minute": {"raw": 84.74, "score": 60.82},
+                    "filler_word_per_minute": {"raw": 21.18, "score": 0.0}
+                },
+                "dimensions": {
+                    "clarity": None,
+                    "rhythm": 30.41,
+                    "vocabulary": 0.0
+                }
+            }
+        }
 
 
 class TranscriptionResponse(BaseModel):
     """Transcription response model."""
 
     text: str = Field(..., description="Full transcription text")
-    words: List[WordInfo] = Field(..., description="List of words with timing information")
     audio_s: Optional[float] = Field(None, description="Audio duration in seconds")
     n_words: Optional[int] = Field(None, description="Number of words")
     metrics: Optional[MetricsResponse] = Field(None, description="Speech metrics (optional)")
@@ -130,6 +144,16 @@ class MetricResponse(BaseModel):
     session_id: int = Field(..., description="Session ID")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
+    
+    class Config:
+        """Pydantic config."""
+        from_attributes = True
+
+
+class SessionResponse(BaseModel):
+    """Session response schema."""
+    
+    session_id: int = Field(..., description="Session ID")
     
     class Config:
         """Pydantic config."""

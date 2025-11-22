@@ -2,17 +2,22 @@
 import io
 import logging
 from typing import Optional
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.config.settings import settings
 from app.models.schemas import (
     HealthResponse,
     TranscriptionResponse,
-    WordInfo,
     MetricsResponse,
     MetricScore,
     DimensionScores,
+    SessionResponse,
+    ExerciseResponse,
 )
+from app.models.db_models import Transcription as TranscriptionModel, Metric as MetricModel, Exercise as ExerciseModel, Session as SessionModel
+from app.database import get_db
 from app.services.eleven_labs import ElevenLabsService
 from app.services.metrics_service import calculate_metrics, get_resources_status
 
@@ -78,13 +83,64 @@ async def health_check() -> HealthResponse:
     return HealthResponse(status="healthy", database=db_status)
 
 
+@app.post("/start", response_model=SessionResponse, tags=["sessions"])
+async def create_session(db: Session = Depends(get_db)) -> SessionResponse:
+    """Create a new session and return the session_id."""
+    try:
+        new_session = SessionModel()
+        db.add(new_session)
+        db.commit()
+        db.refresh(new_session)
+        return SessionResponse(session_id=new_session.id)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create session: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")
+    
+@app.get("/excercise", response_model=ExerciseResponse, tags=["excercises"])
+async def get_exercise(
+    stage_id: int = Query(..., description="Stage ID"), 
+    db: Session = Depends(get_db)) -> ExerciseResponse:
+    """Get a random exercise for a given stage_id."""
+    try:
+        exercise = db.query(ExerciseModel).filter(
+            ExerciseModel.stage_id == stage_id
+        ).order_by(func.random()).first()
+        
+        if not exercise:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"No exercises found for stage_id={stage_id}"
+            )
+        
+        return ExerciseResponse(
+            id=exercise.id,
+            stage_id=exercise.stage_id,
+            exercise_id=exercise.exercise_id,
+            exercise_content=exercise.exercise_content,
+            created_at=exercise.created_at,
+            updated_at=exercise.updated_at,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get exercise: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get exercise: {str(e)}") 
+
 @app.post("/transcript", response_model=TranscriptionResponse, tags=["transcription"])
 async def transcript(
     audio: UploadFile = File(...),
-    reference_transcription: Optional[str] = Query(None, description="Reference transcription for precision metric"),
-    include_metrics: bool = Query(True, description="Include speech metrics in response"),
+    stage_id: int = Form(..., description="Stage ID"),
+    exercise_id: int = Form(..., description="Exercise ID"),
+    session_id: int = Form(..., description="Session ID"),
+    db: Session = Depends(get_db),
 ) -> TranscriptionResponse:
-    """Transcribe audio file using ElevenLabs speech-to-text and calculate speech metrics."""
+    """Transcribe audio file and save to database.
+    
+    1. Transcribes audio using ElevenLabs
+    2. Calculates speech metrics (if requested)
+    3. Saves transcription and metrics to database
+    """
     try:
         # Read audio file as bytes
         audio_data = await audio.read()
@@ -93,24 +149,18 @@ async def transcript(
         service = ElevenLabsService()
         transcription_response = service.transcribe(audio_data)
         
-        # Extract words information
-        words = []
-        if hasattr(transcription_response, 'words') and transcription_response.words:
-            for word_info in transcription_response.words:
-                words.append(WordInfo(
-                    word=word_info.text,
-                    start=word_info.start,
-                    end=word_info.end,
-                    type=word_info.type,
-                ))
-        
         # Calculate audio duration and word count
         audio_s = None
         n_words = None
-        if words:
-            audio_s = words[-1].end - words[0].start
-            n_words = len(transcription_response.text.split())
-        elif hasattr(transcription_response, 'text') and transcription_response.text:
+        
+        # Try to get audio duration from words timing if available
+        if hasattr(transcription_response, 'words') and transcription_response.words:
+            words_list = transcription_response.words
+            if words_list:
+                audio_s = words_list[-1].end - words_list[0].start
+        
+        # Calculate word count
+        if hasattr(transcription_response, 'text') and transcription_response.text:
             n_words = len(transcription_response.text.split())
         
         # Try to get audio duration from file if words timing is not available
@@ -131,7 +181,8 @@ async def transcript(
         
         # Calculate metrics if requested
         metrics_response = None
-        if include_metrics and transcription_response.text:
+        metrics_dict = {}
+        if transcription_response.text:
             try:
                 # Convert audio_s to milliseconds
                 audio_ms = int(audio_s * 1000) if audio_s else None
@@ -142,7 +193,6 @@ async def transcript(
                     metrics_result = await calculate_metrics(
                         audio_ms=audio_ms,
                         transcription=transcription_response.text,
-                        reference_transcription=reference_transcription,
                         raw_counts=raw_counts,
                     )
                     
@@ -162,14 +212,54 @@ async def transcript(
                     metrics_response = MetricsResponse(
                         metrics=metrics_dict,
                         dimensions=dimensions,
-                        metadata=metrics_result.get("metadata", {}),
                     )
             except Exception as e:
                 logger.error(f"Metrics calculation failed: {str(e)}", exc_info=True)
         
+        # Save to database
+        try:
+            # Ensure exercise exists (create if it doesn't)
+            exercise = db.query(ExerciseModel).filter(ExerciseModel.exercise_id == exercise_id).first()
+            if not exercise:
+                exercise = ExerciseModel(
+                    stage_id=stage_id,
+                    exercise_id=exercise_id,
+                    exercise_content=f"Auto-created exercise {exercise_id}",
+                )
+                db.add(exercise)
+                db.flush()
+            
+            # Save transcription
+            db_transcription = TranscriptionModel(
+                stage_id=stage_id,
+                transcription=transcription_response.text,
+                length=audio_s if audio_s else 0.0,
+                exercise_id=exercise_id,
+                session_id=session_id,
+            )
+            db.add(db_transcription)
+            db.flush()
+            
+            # Save metrics
+            for metric_name, metric_score in metrics_dict.items():
+                db_metric = MetricModel(
+                    stage_id=stage_id,
+                    name=metric_name,
+                    value=metric_score.raw,
+                    score=metric_score.score,
+                    session_id=session_id,
+                )
+                db.add(db_metric)
+            
+            db.commit()
+            logger.info(f"✓ Saved transcription and {len(metrics_dict)} metrics for session_id={session_id}")
+        except Exception as db_error:
+            db.rollback()
+            logger.error(f"✗ Database save failed: {str(db_error)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to save to database: {str(db_error)}")
+        
         return TranscriptionResponse(
             text=transcription_response.text,
-            words=words,
             audio_s=audio_s,
             n_words=n_words,
             metrics=metrics_response,

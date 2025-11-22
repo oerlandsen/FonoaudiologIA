@@ -1,7 +1,9 @@
-.PHONY: install run lint format test docker-build docker-up docker-down docker-logs clean db-shell db-reset
+.PHONY: install run lint format test docker-build docker-up docker-down docker-logs clean db-shell db-reset seed
 
 db-connect:
 	docker-compose exec db psql -U postgres -d marraqueta
+
+
 
 install:
 	pip install -r requirements.txt
@@ -38,6 +40,9 @@ db-reset:
 	docker-compose up -d db
 	sleep 5
 	docker-compose up -d
+
+seed:
+	docker-compose exec api python /app/seed.py
 
 clean:
 	find . -type d -name __pycache__ -exec rm -r {} +

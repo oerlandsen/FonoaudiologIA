@@ -1,5 +1,5 @@
 """Models package exports."""
-from app.models.db_models import Exercise, Transcription, Metric
+from app.models.db_models import Exercise, Transcription, Metric, Session
 from app.models.schemas import (
     # Existing schemas
     HealthResponse,
@@ -15,6 +15,7 @@ from app.models.schemas import (
     TranscriptionResponseDB,
     MetricCreate,
     MetricResponse,
+    SessionResponse,
 )
 
 __all__ = [
@@ -22,6 +23,7 @@ __all__ = [
     "Exercise",
     "Transcription",
     "Metric",
+    "Session",
     # Pydantic schemas
     "HealthResponse",
     "WordInfo",
@@ -35,5 +37,6 @@ __all__ = [
     "TranscriptionResponseDB",
     "MetricCreate",
     "MetricResponse",
+    "SessionResponse",
 ]
 

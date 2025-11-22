@@ -39,6 +39,15 @@ class Transcription(Base):
     exercise = relationship("Exercise", back_populates="transcriptions")
 
 
+class Session(Base):
+    """Session model."""
+    
+    __tablename__ = "sessions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class Metric(Base):
     """Metric model."""
     
