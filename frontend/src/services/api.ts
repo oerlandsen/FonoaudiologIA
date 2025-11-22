@@ -4,6 +4,24 @@ import { prepareAudioForUpload } from '../utils/audioUtils';
 // TODO: Update this URL when backend is ready
 const API_BASE_URL = import.meta.env.API_URL || 'http://localhost:8000';
 
+export async function getSession(): Promise<string | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/session`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.session_id || null;
+  } catch (error) {
+    console.error('Error obtaining session ID:', error);
+    return null;
+  }
+}
+
 export async function uploadTranscript(
   stepId: string,
   recording: AudioRecording

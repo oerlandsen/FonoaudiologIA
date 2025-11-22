@@ -40,7 +40,7 @@ export interface DimensionResponse {
 }
 
 export interface ResultsResponse {
-  sessionId: string;
+  session_id: string;
   overallScore: number;
   dimensions: DimensionResponse[];
 }
