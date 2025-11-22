@@ -23,7 +23,7 @@ export async function getSession(): Promise<string | null> {
   }
 }
 
-export async function getExcercise(stepId: string): Promise<ExcerciseResponse> {
+export async function getExercise(stepId: string): Promise<ExcerciseResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/exercise/${stepId}`, {
       method: 'GET',
