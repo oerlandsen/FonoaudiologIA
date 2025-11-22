@@ -2,7 +2,7 @@ import type { AudioRecording, AudioUploadResponse, ResultsResponse } from '../ty
 import { prepareAudioForUpload } from '../utils/audioUtils';
 
 // TODO: Update this URL when backend is ready
-const API_BASE_URL = import.meta.env.API_HOST || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.API_URL || 'http://localhost:8000';
 
 export async function uploadTranscript(
   stepId: string,
