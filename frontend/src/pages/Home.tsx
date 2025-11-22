@@ -28,7 +28,7 @@ export default function HomePage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Speech Coach
+            0ratorIA
           </h1>
           <p className="text-base text-gray-600">
             Mejora tu habla con ejercicios impulsados por IA
