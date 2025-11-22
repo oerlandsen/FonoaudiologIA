@@ -18,6 +18,7 @@ from typing import Optional, Dict, Any, List
 import json
 import os
 import re
+from count_filler_words import count_filler_words_from_file
 
 
 JsonDict = Dict[str, Any]
@@ -378,12 +379,23 @@ def measure_speech_metrics(
 
 # Optional: simple CLI test
 if __name__ == "__main__":
-    example = measure_speech_metrics(
-        audio_ms=60000,
-        transcription="hello world this is a test",
-        reference_transcription="hello world this is the test",
-        summary="A short test summary.",
-        raw_counts={"num_words": 7, "num_filler_words": 3},
-        parameters_path="parameters.json",
-    )
-    print(json.dumps(example, indent=2))
+    transcription="Bueno, emm, yo creo que, ahh deberiamos, mmmm, empezar ahora."
+    filler_words_path = "filler_words.json"  # adjust if it's in another folder
+
+    try:
+        num_fillers = count_filler_words_from_file(
+            transcription=transcription,
+            filler_words_path=filler_words_path,
+        )
+        print(f"Number of filler words: {num_fillers}")
+        example = measure_speech_metrics(
+            audio_ms=60000,
+            transcription=transcription,
+            reference_transcription="Bueno yo creoq ue deberiamos empezar ahora.",
+            summary="A short test summary.",
+            raw_counts={"num_words": 7, "num_filler_words": num_fillers},
+            parameters_path="parameters.json",
+        )
+        print(json.dumps(example, indent=2))
+    except Exception as e:
+        print(f"Error: {e}")
