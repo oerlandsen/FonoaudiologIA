@@ -1,5 +1,6 @@
 import { Mic, BookOpen, Image as ImageIcon, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getSession } from '../services/api';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -48,9 +49,17 @@ export default function HomePage() {
               Completa 3 ejercicios para obtener tu puntuación del habla
             </p>
             <button
-                onClick={() => {
-                    // Limpiar resultados anteriores
+                onClick={async () => {
+                    // Limpiar resultados anteriores y crear sesión en backend
                     sessionStorage.removeItem('exerciseResults');
+                    try {
+                      const sessionId = await getSession();
+                      if (sessionId) {
+                        sessionStorage.setItem('session_id', sessionId);
+                      }
+                    } catch (err) {
+                      console.error('Error iniciando sesión de prueba', err);
+                    }
                     navigate('/exercise/1');
                 }}
                 className="bg-white text-indigo-500 px-6 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-colors w-full"

@@ -95,7 +95,7 @@ export function prepareAudioForUpload(recording: AudioRecording, stageId: string
   formData.append('audio', recording.blob, `recording-${recording.id}.${getFileExtension(recording.mimeType)}`);
   formData.append('language', 'es'); // Always Spanish
   formData.append('timestamp', recording.timestamp.toISOString());
-  formData.append('stageId', stageId);
+  formData.append('stage_id', stageId);
   return formData;
 }
 
