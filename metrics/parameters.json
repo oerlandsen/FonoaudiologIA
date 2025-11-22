@@ -1,0 +1,34 @@
+{
+    "metrics": {
+      "precision_transcription": {
+        "min_value": 0.0,
+        "max_value": 100.0,
+        "ideal_min": 95.0,
+        "ideal_max": 100.0
+      },
+      "words_per_minute": {
+        "min_value": 60.0,
+        "max_value": 220.0,
+        "ideal_min": 120.0,
+        "ideal_max": 160.0
+      },
+      "filler_words_count": {
+        "min_value": 0.0,
+        "max_value": 40.0,
+        "ideal_min": 0.0,
+        "ideal_max": 5.0
+      },
+      "lexical_variability": {
+        "min_value": 0.20,
+        "max_value": 0.80,
+        "ideal_min": 0.40,
+        "ideal_max": 0.60
+      }
+    },
+    "dimensions": {
+      "accuracy": ["precision_transcription"],
+      "fluency": ["words_per_minute", "filler_words_count"],
+      "lexical_richness": ["lexical_variability"]
+    }
+  }
+  
