@@ -190,8 +190,8 @@ export default function ScorePage() {
                     <Info size={14} />
                   </button>
                   {activeTooltip === 'vocabulary' && (
-                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-56 mt-1">
-                      <p className="leading-relaxed">Variedad y riqueza de las palabras usadas: cuántos términos distintos empleas y cuán repetitivo es el lenguaje.</p>
+                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-48 mt-1">
+                      <p className="leading-relaxed">Variedad y riqueza de las palabras usadas.</p>
                       <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
                     </div>
                   )}
@@ -211,8 +211,8 @@ export default function ScorePage() {
                     <Info size={14} />
                   </button>
                   {activeTooltip === 'rhythm' && (
-                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-56 mt-1">
-                      <p className="leading-relaxed">Patrón de velocidad y cadencia al hablar, vinculado a la fluidez global e influido por la presencia de pausas y muletillas.</p>
+                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-48 mt-1">
+                      <p className="leading-relaxed">Patrón de velocidad y cadencia al hablar, relacionado con la fluidez.</p>
                       <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
                     </div>
                   )}
@@ -232,8 +232,8 @@ export default function ScorePage() {
                     <Info size={14} />
                   </button>
                   {activeTooltip === 'clarity' && (
-                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-56 mt-1">
-                      <p className="leading-relaxed">Qué tan fácil es entender lo que dices: si las palabras se escuchan nítidas, sin errores importantes y con ideas bien articuladas.</p>
+                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-48 mt-1">
+                      <p className="leading-relaxed">Qué tan fácil es entender lo que dices.</p>
                       <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
                     </div>
                   )}
