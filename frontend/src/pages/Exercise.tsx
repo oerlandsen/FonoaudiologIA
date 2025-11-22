@@ -58,6 +58,12 @@ export default function ExercisePage() {
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  useEffect(() => {
+    setRecordingUri(null);
+    setIsRecording(false);
+    setIsPlaying(false);
+  }, [step, currentStep]);
+
   const Icon = exercise.icon;
 
   const startRecording = useCallback(async () => {
@@ -73,18 +79,25 @@ export default function ExercisePage() {
         }
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
-
+        
+        // Convertir a bytes (ArrayBuffer)
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        
+        // Si necesitas un Uint8Array (array de bytes)
+        const bytes = new Uint8Array(arrayBuffer);
+  
         console.log('Audio metadata:', {
           size: `${(audioBlob.size / 1024).toFixed(2)} KB`,
           type: audioBlob.type,
           url: audioUrl,
           dateCreated: new Date().toISOString(),
-          audioBlob: audioBlob,
+          bytes: bytes, 
+          byteLength: bytes.byteLength, 
         });
-
+  
         setRecordingUri(audioUrl);
         stream.getTracks().forEach(track => track.stop());
       };
@@ -127,7 +140,6 @@ export default function ExercisePage() {
     setIsSubmitting(true);
 
     try {
-      // Store the result for this exercise
       const exerciseData = {
         step: currentStep,
         type: exercise.type,
@@ -135,15 +147,12 @@ export default function ExercisePage() {
         timestamp: new Date().toISOString(),
       };
 
-      // Get existing results from sessionStorage
       const existingResults = JSON.parse(sessionStorage.getItem('exerciseResults') || '[]');
       sessionStorage.setItem('exerciseResults', JSON.stringify([...existingResults, exerciseData]));
 
-      // Move to next step or show results
       if (currentStep < 3) {
         navigate(`/exercise/${currentStep + 1}`);
       } else {
-        // All exercises complete, navigate to scoring
         navigate('/score');
       }
     } catch (error) {
