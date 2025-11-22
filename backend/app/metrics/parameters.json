@@ -16,7 +16,7 @@
         "min_value": 0.0,
         "max_value": 6.0,
         "ideal_min": 0.0,
-        "ideal_max": 1.0
+        "ideal_max": 2.0
       },
       "lexical_variability": {
         "min_value": 0.10,
