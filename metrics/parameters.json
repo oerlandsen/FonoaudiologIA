@@ -7,8 +7,8 @@
         "ideal_max": 100.0
       },
       "words_per_minute": {
-        "min_value": 30.0,  
-        "max_value": 300.0, 
+        "min_value": 30.0,
+        "max_value": 300.0,
         "ideal_min": 120.0,
         "ideal_max": 160.0
       },
@@ -26,9 +26,9 @@
       }
     },
     "dimensions": {
-      "accuracy": ["precision_transcription"],
-      "fluency": ["words_per_minute", "filler_words_count"],
-      "lexical_richness": ["lexical_variability"]
+      "clarity": ["precision_transcription"],
+      "rhythm": ["words_per_minute", "filler_word_per_minute"],
+      "vocabulary": ["lexical_variability"]
     }
   }
   

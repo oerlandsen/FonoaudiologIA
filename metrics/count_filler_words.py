@@ -1,12 +1,8 @@
 import json
 import os
 from typing import List
-
-
-# If you already have _tokenize in measurements.py, reuse that.
-# Otherwise, uncomment this simple version:
-#
 import re 
+
 _TOKENIZER_PATTERN = re.compile(r"[^\w']+", flags=re.UNICODE)
 
 def _tokenize(text: str) -> List[str]:

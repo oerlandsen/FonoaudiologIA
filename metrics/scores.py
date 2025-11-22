@@ -7,8 +7,8 @@ Implements:
 - Metrics:
     * precision_transcription
     * words_per_minute
-    * filler_word_per_minute  (now measured as filler words per minute)
-    * lexical_variability
+    * filler_word_per_minute  (filler words per minute)
+    * lexical_variability     (based on Distinct-1 sin stopwords)
 - Dimension aggregation based on parameters.json
 """
 
@@ -19,9 +19,30 @@ import json
 import os
 import re
 from count_filler_words import count_filler_words_from_file
-
+from lexical_variability import compute_spanish_lexical_variability
+import spacy
 
 JsonDict = Dict[str, Any]
+
+
+# --------------------------
+# spaCy Spanish model loader
+# --------------------------
+
+def load_spanish_nlp(model_name: str = "es_core_news_sm"):
+    """Load the Spanish spaCy model."""
+    return spacy.load(model_name)
+
+
+_NLP_ES = None
+
+
+def get_spanish_nlp():
+    """Lazy global loader for the Spanish model (so we only load it once)."""
+    global _NLP_ES
+    if _NLP_ES is None:
+        _NLP_ES = load_spanish_nlp()
+    return _NLP_ES
 
 
 # =========================
@@ -53,7 +74,7 @@ _TOKENIZER_PATTERN = re.compile(r"[^\w']+", flags=re.UNICODE)
 
 def _tokenize(text: str) -> List[str]:
     """
-    Very simple tokenizer:
+    Simple tokenizer:
       - Lowercases
       - Replaces non-word chars (except apostrophes) with spaces
       - Splits on whitespace
@@ -62,8 +83,7 @@ def _tokenize(text: str) -> List[str]:
         return []
     text = text.lower()
     text = _TOKENIZER_PATTERN.sub(" ", text)
-    tokens = text.split()
-    return tokens
+    return text.split()
 
 
 # ==========================
@@ -139,13 +159,9 @@ def _metric_precision_transcription(
         return 0.0
 
     aligned_len = min(total_pred, len(ref_tokens))
-    correct = 0
-    for i in range(aligned_len):
-        if pred_tokens[i] == ref_tokens[i]:
-            correct += 1
+    correct = sum(1 for i in range(aligned_len) if pred_tokens[i] == ref_tokens[i])
 
-    precision_raw = 100.0 * correct / total_pred
-    return precision_raw
+    return 100.0 * correct / total_pred
 
 
 def _metric_words_per_minute(audio_ms: int, num_words: int) -> Optional[float]:
@@ -186,21 +202,6 @@ def _metric_filler_words_per_minute(audio_ms: int, num_filler_words: int) -> Opt
     return float(num_filler_words) / audio_minutes
 
 
-def _metric_lexical_variability(text: str) -> float:
-    """
-    Compute a simple Type-Token Ratio (TTR) as lexical variability.
-
-    TTR = unique_tokens / total_tokens  (in [0, 1])
-    """
-    tokens = _tokenize(text)
-    total_tokens = len(tokens)
-    if total_tokens == 0:
-        return 0.0
-
-    unique_tokens = len(set(tokens))
-    return unique_tokens / total_tokens
-
-
 # ==========================
 #  Main entry point
 # ==========================
@@ -211,7 +212,8 @@ def measure_speech_metrics(
     reference_transcription: Optional[str] = None,
     summary: Optional[str] = None,
     raw_counts: Optional[Dict[str, Any]] = None,
-    parameters_path: str = "parameters.json"
+    parameters_path: str = "parameters.json",
+    filler_words_path: str = "filler_words.json",
 ) -> Dict[str, Any]:
     """
     Compute speech metrics, normalize them to scores in [0, 100],
@@ -235,7 +237,9 @@ def measure_speech_metrics(
         "num_filler_words": None,
         "filler_words_per_minute": None,
         "used_summary_for_lexical_variability": False,
+        "lexical_variability_source": None,
         "skipped_metrics": [],
+        "lexical_details": None,  # full output from compute_spanish_lexical_variability
     }
 
     # ------------------------
@@ -248,13 +252,23 @@ def measure_speech_metrics(
     if isinstance(num_words, (int, float)):
         metadata["num_words"] = int(num_words)
 
-    # filler words count (absolute count, used to derive per-minute rate)
+    # filler words: use raw_counts if provided, otherwise compute from transcription
     num_filler_words = raw_counts.get("num_filler_words")
+    if num_filler_words is None and transcription:
+        try:
+            num_filler_words = count_filler_words_from_file(
+                transcription=transcription,
+                filler_words_path=filler_words_path,
+            )
+        except FileNotFoundError:
+            # If filler_words.json is missing, we just skip this metric later
+            num_filler_words = None
+
     if isinstance(num_filler_words, (int, float)):
         metadata["num_filler_words"] = int(num_filler_words)
 
     # ------------------------
-    # 5.1 Precision transcription
+    # 1) Precision transcription
     # ------------------------
     metric_name = "precision_transcription"
     cfg = metrics_cfg.get(metric_name)
@@ -275,7 +289,7 @@ def measure_speech_metrics(
         metadata["skipped_metrics"].append(metric_name)
 
     # ------------------------
-    # 5.2 Words per minute
+    # 2) Words per minute
     # ------------------------
     metric_name = "words_per_minute"
     cfg = metrics_cfg.get(metric_name)
@@ -299,10 +313,9 @@ def measure_speech_metrics(
         metadata["skipped_metrics"].append(metric_name)
 
     # ------------------------
-    # 5.3 Filler words per minute (replaces pure count)
+    # 3) Filler words per minute
     # ------------------------
-    # NOTE: metric name remains "filler_word_per_minute" for compatibility,
-    # but the raw value is now "filler words per minute".
+    # NOTE: metric name remains "filler_word_per_minute".
     metric_name = "filler_word_per_minute"
     cfg = metrics_cfg.get(metric_name)
     if cfg and num_filler_words is not None and audio_ms is not None:
@@ -326,7 +339,7 @@ def measure_speech_metrics(
         metadata["skipped_metrics"].append(metric_name)
 
     # ------------------------
-    # 5.4 Lexical variability
+    # 4) Lexical variability (via lexical_variability.compute_spanish_lexical_variability)
     # ------------------------
     metric_name = "lexical_variability"
     cfg = metrics_cfg.get(metric_name)
@@ -334,12 +347,20 @@ def measure_speech_metrics(
     text_for_lex = None
     if transcription:
         text_for_lex = transcription
+        metadata["used_summary_for_lexical_variability"] = False
     elif summary:
         text_for_lex = summary
         metadata["used_summary_for_lexical_variability"] = True
 
     if cfg and text_for_lex:
-        lex_raw = _metric_lexical_variability(text_for_lex)
+        nlp = get_spanish_nlp()
+        lex_details = compute_spanish_lexical_variability(text_for_lex, nlp=nlp)
+        metadata["lexical_details"] = lex_details
+        metadata["lexical_variability_source"] = "distinct_1_no_stopwords"
+
+        # Use Distinct-1 sin stopwords as the raw value in [0, 1]
+        lex_raw = float(lex_details.get("distinct_1_no_stopwords", 0.0))
+
         score = normalize_metric(
             lex_raw,
             cfg["min_value"],
@@ -355,7 +376,7 @@ def measure_speech_metrics(
         metadata["skipped_metrics"].append(metric_name)
 
     # ------------------------
-    # 6. Dimensions
+    # 5) Dimensions
     # ------------------------
     dimensions: Dict[str, Optional[float]] = {}
     for dim_name, metric_names in dims_cfg.items():
@@ -367,7 +388,6 @@ def measure_speech_metrics(
         if scores:
             dimensions[dim_name] = round(sum(scores) / len(scores), 2)
         else:
-            # No available metrics for this dimension
             dimensions[dim_name] = None
 
     return {
@@ -377,25 +397,59 @@ def measure_speech_metrics(
     }
 
 
-# Optional: simple CLI test
-if __name__ == "__main__":
-    transcription="Bueno, emm, yo creo que, ahh deberiamos, mmmm, empezar ahora."
-    filler_words_path = "filler_words.json"  # adjust if it's in another folder
+# ======================================
+# CLI example: run the full measurement
+# ======================================
 
+if __name__ == "__main__":
+    # Example Spanish transcription with fillers and some repetition
+    transcription = (
+        "Bueno, eh, yo creo que, emm, deberíamos, mmm, empezar ahora con el tema de "
+        "los reembolsos. El reembolso de gastos médicos es importante, porque sin "
+        "reembolso muchas personas no pueden acceder a la salud. A veces hablamos de "
+        "reembolso, reembolso, reembolso, y nos olvidamos de la experiencia del paciente."
+    )
+
+    filler_words_path = "filler_words.json"      # ajusta si está en otra carpeta
+    parameters_path = "parameters.json"
+
+    # 1. Contar muletillas usando count_filler_words_from_file
     try:
         num_fillers = count_filler_words_from_file(
             transcription=transcription,
             filler_words_path=filler_words_path,
         )
-        print(f"Number of filler words: {num_fillers}")
-        example = measure_speech_metrics(
-            audio_ms=60000,
+        print(f"[Example] Number of filler words (absolute count): {num_fillers}")
+    except FileNotFoundError:
+        num_fillers = None
+        print(f"[Example] WARNING: {filler_words_path} not found. Skipping filler count.")
+
+    # 2. Medir variabilidad léxica detallada usando compute_spanish_lexical_variability
+    nlp = get_spanish_nlp()
+    lexical_info = compute_spanish_lexical_variability(transcription, nlp=nlp)
+    print(f"  Global lexical variability score (0–100): {lexical_info['lexical_variability_score']:.2f}")
+
+    # 3. Ejecutar el pipeline completo de measure_speech_metrics usando parameters.json
+    raw_counts = {
+        # let measure_speech_metrics infer num_words from transcription
+        "num_filler_words": num_fillers,
+    }
+
+    try:
+        result = measure_speech_metrics(
+            audio_ms=60000,  # 60 segundos de audio
             transcription=transcription,
-            reference_transcription="Bueno yo creoq ue deberiamos empezar ahora.",
-            summary="A short test summary.",
-            raw_counts={"num_words": 7, "num_filler_words": num_fillers},
-            parameters_path="parameters.json",
+            reference_transcription=(
+                "Bueno, yo creo que deberíamos empezar ahora con el tema "
+                "de los reembolsos de gastos médicos."
+            ),
+            summary="Resumen breve sobre reembolsos y acceso a la salud.",
+            raw_counts=raw_counts,
+            parameters_path=parameters_path,
+            filler_words_path=filler_words_path,
         )
-        print(json.dumps(example, indent=2))
+
+        print("\n[Example] Full metrics output (normalized with parameters.json):")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"\n[Example] Error while running measure_speech_metrics: {e}")
