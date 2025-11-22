@@ -56,6 +56,8 @@ export default function ExercisePage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isImageLoading, setIsImageLoading] = useState(true);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -221,6 +223,35 @@ export default function ExercisePage() {
                 {exercise.content}
               </p>
             </div>
+            {isLoading ? (
+              <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500 flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+              </div>
+            ) : exercise.type === 'description' ? (
+              <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500 flex justify-center relative min-h-[200px]">
+                {isImageLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+                  </div>
+                )}
+                <img 
+                  src={exercise.content} 
+                  alt="Imagen para describir" 
+                  className={`max-w-full h-auto rounded max-h-64 object-contain ${isImageLoading ? 'invisible' : 'visible'}`}
+                  onLoad={() => setIsImageLoading(false)}
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://static.independent.co.uk/s3fs-public/thumbnails/image/2014/09/19/16/Pivot-Friends.jpg';
+                    setIsImageLoading(false);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500">
+                <p className="text-sm text-gray-700 leading-6">
+                  {exercise.content}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Recording Controls */}

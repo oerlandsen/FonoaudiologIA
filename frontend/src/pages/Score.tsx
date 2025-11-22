@@ -225,9 +225,8 @@ export default function ScorePage() {
         <div className="max-w-2xl mx-auto">
           <button
             onClick={() => navigate('/')}
-            className="w-full bg-indigo-500 text-white py-4 rounded-xl font-semibold hover:bg-indigo-600 flex items-center justify-center"
+            className="w-full bg-indigo-500 text-white py-4 rounded-xl font-semibold hover:bg-indigo-600"
           >
-            <Home className="mr-2" size={20} />
             Volver al inicio
           </button>
         </div>
