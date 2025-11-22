@@ -5,6 +5,10 @@ export interface AudioRecording {
   duration: number;
   timestamp: Date;
   mimeType: string;
+  /** Número de ejercicio (1..n) asociado al audio */
+  exerciseId?: number;
+  /** Identificador de sesión activo para agrupar ejercicios */
+  sessionId?: string;
 }
 
 export interface AudioAnalysis {

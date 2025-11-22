@@ -1,13 +1,13 @@
 
 import type { AudioRecording, AudioUploadResponse } from '../types/audio';
-import type { ResultsResponse, ExcerciseResponse } from '../types/requests';
+import type { ResultsResponse, ExerciseResponse } from '../types/requests';
 import { prepareAudioForUpload } from '../utils/audioUtils';
 
 const API_BASE_URL = import.meta.env.API_URL || 'http://localhost:8000';
 
 export async function getSession(): Promise<string | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/session`, {
+    const response = await fetch(`${API_BASE_URL}/start`, {
       method: 'POST',
     });
     if (!response.ok) {
@@ -16,6 +16,8 @@ export async function getSession(): Promise<string | null> {
     }
 
     const data = await response.json();
+    sessionStorage.setItem('session_id', data.session_id);
+
     return data.session_id || null;
   } catch (error) {
     console.error('Error obtaining session ID:', error);
@@ -23,9 +25,9 @@ export async function getSession(): Promise<string | null> {
   }
 }
 
-export async function getExercise(stepId: string): Promise<ExcerciseResponse> {
+export async function getExercise(stepId: string): Promise<ExerciseResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/exercise/${stepId}`, {
+    const response = await fetch(`${API_BASE_URL}/excercise?stage_id=${stepId}`, {
       method: 'GET',
     });
     if (!response.ok) {

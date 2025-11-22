@@ -187,7 +187,9 @@ export default function ExercisePage() {
       const response = await uploadTranscript(
         exerciseData.step.toString(),
         {
-          id: `exercise-${currentStep}-${Date.now()}`,
+          id: `recording-${Date.now()}`,
+          exerciseId: exercise.exercise_id,
+          sessionId: sessionStorage.getItem('session_id') || undefined,
           blob: audioBlob || new Blob(),
           url: recordingUri,
           duration: 0,

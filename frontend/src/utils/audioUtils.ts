@@ -92,10 +92,21 @@ export function getAudioDuration(blob: Blob): Promise<number> {
 
 export function prepareAudioForUpload(recording: AudioRecording, stageId: string): FormData {
   const formData = new FormData();
-  formData.append('audio', recording.blob, `recording-${recording.id}.${getFileExtension(recording.mimeType)}`);
-  formData.append('language', 'es'); // Always Spanish
-  formData.append('timestamp', recording.timestamp.toISOString());
+  const fileId = recording.id || `recording-${Date.now()}`;
+  const exerciseId = (recording.exerciseId ?? 0).toString();
+  const sessionId = recording.sessionId || sessionStorage.getItem('session_id') || '';
+
+  if (!recording.exerciseId) {
+    console.warn('[upload] exerciseId no proporcionado; usando 0 por defecto');
+  }
+  if (!sessionId) {
+    console.warn('[upload] session_id no disponible; el backend podría requerirlo');
+  }
+
+  formData.append('audio', recording.blob, `recording-${fileId}.${getFileExtension(recording.mimeType)}`);
   formData.append('stage_id', stageId);
+  formData.append('exercise_id', exerciseId);
+  formData.append('session_id', sessionId);
   return formData;
 }
 

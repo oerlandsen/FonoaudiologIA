@@ -20,9 +20,9 @@ export default function ScorePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
-  const updateMetrics = useCallback((r: ResultsResponse) => {
+  const updateMetrics = useCallback((results: ResultsResponse) => {
     const lower = (s: string) => s.toLowerCase();
-    const dims = r.dimensions || [];
+    const dims = results.dimensions || [];
 
     const normalized = dims.map(d => ({
       name: lower(d.name),
@@ -38,7 +38,7 @@ export default function ScorePage() {
     const vocabulary = findValue(['vocabulary','vocabulario']);
     const clarity = findValue(['clarity','claridad']);
     const rhythm = findValue(['rhythm','ritmo']);
-    let overall = r.overallScore || findValue(['overall','general','global']);
+    let overall = findValue(['overall','general']);
     if (!overall) {
       const present = [vocabulary, clarity, rhythm].filter(v => v > 0);
       overall = present.length ? Math.round(present.reduce((a,b)=>a+b,0)/present.length) : 0;
