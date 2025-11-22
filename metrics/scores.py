@@ -7,7 +7,7 @@ Implements:
 - Metrics:
     * precision_transcription
     * words_per_minute
-    * filler_words_count
+    * filler_word_per_minute  (now measured as filler words per minute)
     * lexical_variability
 - Dimension aggregation based on parameters.json
 """
@@ -166,11 +166,23 @@ def _metric_words_per_minute(audio_ms: int, num_words: int) -> Optional[float]:
     return float(num_words) / audio_minutes
 
 
-def _metric_filler_words_count(num_filler_words: int) -> float:
+def _metric_filler_words_per_minute(audio_ms: int, num_filler_words: int) -> Optional[float]:
     """
-    Identity metric: just return the filler word count as a float.
+    Compute filler words per minute.
+
+    FPM = num_filler_words / audio_minutes
     """
-    return float(num_filler_words)
+    if audio_ms <= 0:
+        return None
+
+    audio_minutes = audio_ms / (1000.0 * 60.0)
+    if audio_minutes <= 0:
+        return None
+
+    if num_filler_words is None:
+        return None
+
+    return float(num_filler_words) / audio_minutes
 
 
 def _metric_lexical_variability(text: str) -> float:
@@ -220,6 +232,7 @@ def measure_speech_metrics(
         "audio_ms": audio_ms,
         "num_words": None,
         "num_filler_words": None,
+        "filler_words_per_minute": None,
         "used_summary_for_lexical_variability": False,
         "skipped_metrics": [],
     }
@@ -234,7 +247,7 @@ def measure_speech_metrics(
     if isinstance(num_words, (int, float)):
         metadata["num_words"] = int(num_words)
 
-    # filler words count
+    # filler words count (absolute count, used to derive per-minute rate)
     num_filler_words = raw_counts.get("num_filler_words")
     if isinstance(num_filler_words, (int, float)):
         metadata["num_filler_words"] = int(num_filler_words)
@@ -285,23 +298,29 @@ def measure_speech_metrics(
         metadata["skipped_metrics"].append(metric_name)
 
     # ------------------------
-    # 5.3 Filler words count
+    # 5.3 Filler words per minute (replaces pure count)
     # ------------------------
-    metric_name = "filler_words_count"
+    # NOTE: metric name remains "filler_word_per_minute" for compatibility,
+    # but the raw value is now "filler words per minute".
+    metric_name = "filler_word_per_minute"
     cfg = metrics_cfg.get(metric_name)
-    if cfg and num_filler_words is not None:
-        fillers_raw = _metric_filler_words_count(int(num_filler_words))
-        score = normalize_metric(
-            fillers_raw,
-            cfg["min_value"],
-            cfg["max_value"],
-            cfg["ideal_min"],
-            cfg["ideal_max"],
-        )
-        metrics[metric_name] = {
-            "raw": round(fillers_raw, 4),
-            "score": round(score, 2),
-        }
+    if cfg and num_filler_words is not None and audio_ms is not None:
+        fpm_raw = _metric_filler_words_per_minute(audio_ms, int(num_filler_words))
+        if fpm_raw is not None:
+            metadata["filler_words_per_minute"] = round(fpm_raw, 4)
+            score = normalize_metric(
+                fpm_raw,
+                cfg["min_value"],
+                cfg["max_value"],
+                cfg["ideal_min"],
+                cfg["ideal_max"],
+            )
+            metrics[metric_name] = {
+                "raw": round(fpm_raw, 4),
+                "score": round(score, 2),
+            }
+        else:
+            metadata["skipped_metrics"].append(metric_name)
     else:
         metadata["skipped_metrics"].append(metric_name)
 
@@ -357,15 +376,14 @@ def measure_speech_metrics(
     }
 
 
-# Optional: allow simple CLI testing
+# Optional: simple CLI test
 if __name__ == "__main__":
-    # Small smoke test
     example = measure_speech_metrics(
         audio_ms=60000,
         transcription="hello world this is a test",
         reference_transcription="hello world this is the test",
         summary="A short test summary.",
-        raw_counts={"num_words": 7, "num_filler_words": 2},
+        raw_counts={"num_words": 7, "num_filler_words": 3},
         parameters_path="parameters.json",
     )
     print(json.dumps(example, indent=2))
