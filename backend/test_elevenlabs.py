@@ -96,7 +96,7 @@ def variedad_palabras(transcription):
 # precision_score = precision(transcription, original_text)
 # wpm = palabras_por_min(transcription) 
 
-print(f"Resultados de la transcripción: {transcription['text']}")
-print(f"Detalles de la transcripción: {transcription}")
+# print(f"Resultados de la transcripción: {transcription['text']}")
+# print(f"Detalles de la transcripción: {transcription}")
 # print(f"Precisión: {precision_score:.2f}%")
 # print(f"Palabras por minuto: {wpm:.2f}")
