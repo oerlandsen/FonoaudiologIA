@@ -37,6 +37,8 @@ transcription_response = elevenlabs.speech_to_text.convert(
 
 transcription = {
     "text": transcription_response.text,
+    "audio_s": transcription_response.words[-1].end-transcription_response.words[0].start,
+    "n_words": len(transcription_response.text.split()),
 }
 words = []
 for word_info in transcription_response.words:
@@ -78,10 +80,8 @@ def precision(transcription, original_text):
     return match
 
 def palabras_por_min(transcription):
-    words_count =len(transcription["text"].split())
-    start_time = transcription["words"][0]["start"]
-    end_time = transcription["words"][-1]["end"]
-    duration_minutes = (end_time - start_time) / 60
+    words_count = transcription["n_words"]
+    duration_minutes = transcription["audio_s"] / 60
     wpm = words_count / duration_minutes
     return wpm
 
