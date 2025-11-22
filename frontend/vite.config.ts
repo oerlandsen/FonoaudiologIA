@@ -2,7 +2,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
@@ -10,11 +9,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png'],
       manifest: {
-        name: 'FonoaudiologIA - Speech Therapy App',
-        short_name: 'FonoaudiologIA',
-        description: 'App to help people with their speech ability through audio transcription and pronunciation analysis',
-        theme_color: '#3b82f6',
-        background_color: '#ffffff',
+        name: 'Speech Coach - FonoaudiologIA',
+        short_name: 'Speech Coach',
+        description: 'AI-powered speech improvement app for everyone',
+        theme_color: '#6366F1',
+        background_color: '#F9FAFB',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
@@ -48,7 +47,7 @@ export default defineConfig({
               cacheName: 'google-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365
               },
               cacheableResponse: {
                 statuses: [0, 200]
@@ -60,4 +59,3 @@ export default defineConfig({
     })
   ],
 })
-
