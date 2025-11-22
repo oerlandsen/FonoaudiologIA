@@ -1,21 +1,17 @@
-import type { AudioRecording, AudioUploadResponse } from '../types/audio';
+import type { AudioRecording, AudioUploadResponse, ResultsResponse } from '../types/audio';
 import { prepareAudioForUpload } from '../utils/audioUtils';
 
 // TODO: Update this URL when backend is ready
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.API_HOST || 'http://localhost:8000';
 
-/**
- * Upload audio for transcription and analysis
- * @param recording - The audio recording to upload
- * @returns Promise with analysis results
- */
-export async function uploadAudioForAnalysis(
+export async function uploadTranscript(
+  stepId: string,
   recording: AudioRecording
 ): Promise<AudioUploadResponse> {
   try {
-    const formData = prepareAudioForUpload(recording);
+    const formData = prepareAudioForUpload(recording, stepId);
 
-    const response = await fetch(`${API_BASE_URL}/audio/analyze`, {
+    const response = await fetch(`${API_BASE_URL}/transcript`, {
       method: 'POST',
       body: formData,
     });
@@ -31,9 +27,9 @@ export async function uploadAudioForAnalysis(
     const data = await response.json();
     return {
       success: true,
-      audioId: data.audioId,
-      analysis: data.analysis,
+      session_id: data.session_id
     };
+
   } catch (error) {
     return {
       success: false,
@@ -42,36 +38,19 @@ export async function uploadAudioForAnalysis(
   }
 }
 
-/**
- * Get analysis results for a previously uploaded audio
- * @param audioId - The ID of the audio to get results for
- * @returns Promise with analysis results
- */
-export async function getAnalysisResults(audioId: string): Promise<AudioUploadResponse> {
+export async function getResults(): Promise<ResultsResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/audio/${audioId}/analysis`, {
+    const response = await fetch(`${API_BASE_URL}/results`, {
       method: 'GET',
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-      return {
-        success: false,
-        error: error.error || `HTTP error! status: ${response.status}`,
-      };
+      throw new Error(error.error || `HTTP error! status: ${response.status}`);
     }
-
     const data = await response.json();
-    return {
-      success: true,
-      audioId: data.audioId,
-      analysis: data.analysis,
-    };
+    return data;
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch analysis',
-    };
+    throw error instanceof Error ? error : new Error('Failed to fetch metrics');
   }
 }
-
