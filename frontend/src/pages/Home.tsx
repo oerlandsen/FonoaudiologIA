@@ -30,7 +30,7 @@ export default function HomePage() {
         <div className="mb-8">
           <div className="mb-4">
             <img 
-              src="/images/oratoria_v3_without_bg.png" 
+              src="/images/oratoria_logo_v4.png" 
               alt="0ratorIA - Human Speech Enhancement" 
               className="h-20 md:h-40 mx-auto max-w-full" 
             />

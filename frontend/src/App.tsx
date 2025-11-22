@@ -1,12 +1,19 @@
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { usePWA } from './hooks/usePWA';
 import HomePage from './pages/Home';
 import ExercisePage from './pages/Exercise';
 import ScorePage from './pages/Score';
 import ResultsPage from './pages/Results';
+import SplashScreen from './components/SplashScreen';
 
 function App() {
   const { isInstallable, installApp } = usePWA();
+  const [showSplash, setShowSplash] = useState(true);
+
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
 
   return (
     <BrowserRouter>
