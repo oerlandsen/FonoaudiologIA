@@ -1,5 +1,8 @@
 .PHONY: install run lint format test docker-build docker-up docker-down docker-logs clean db-shell db-reset
 
+db-connect:
+	docker-compose exec db psql -U postgres -d marraqueta
+
 install:
 	pip install -r requirements.txt
 

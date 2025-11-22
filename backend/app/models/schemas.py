@@ -7,6 +7,7 @@ class HealthResponse(BaseModel):
     """Health check response model."""
 
     status: str = Field(..., description="Service status", example="healthy")
+    database: str = Field(..., description="Database connection status", example="connected")
 
 
 class WordInfo(BaseModel):

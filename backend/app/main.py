@@ -54,7 +54,18 @@ async def startup_event():
 @app.get("/health", response_model=HealthResponse, tags=["health"])
 async def health_check() -> HealthResponse:
     """Health check endpoint."""
-    return HealthResponse(status="healthy")
+    # Check database connectivity
+    try:
+        from sqlalchemy import text
+        from app.database import engine
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception as e:
+        logger.error(f"Database health check failed: {str(e)}")
+        db_status = "disconnected"
+    
+    return HealthResponse(status="healthy", database=db_status)
 
 
 @app.post("/transcript", response_model=TranscriptionResponse, tags=["transcription"])
