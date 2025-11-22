@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { ExcerciseResponse } from '../types/requests';
+import type { ExerciseResponse } from '../types/requests';
 import exampleService from '../services/exampleService';
 import {
   ArrowLeft,
@@ -26,7 +26,7 @@ export default function ExercisePage() {
   const currentStep = parseInt(step || '1');
   // const baseExercise = EXERCISES[currentStep];
 
-  const [exercise, setExercise] = useState<ExcerciseResponse | undefined>(undefined);
+  const [exercise, setExercise] = useState<ExerciseResponse | undefined>(undefined);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -79,7 +79,7 @@ export default function ExercisePage() {
         const info = await getExercise(currentStep.toString());
         if (cancelled) return;
 
-        let next = info as ExcerciseResponse | undefined;
+        let next = info as ExerciseResponse | undefined;
         const stageNum = (info?.stage_id ?? currentStep);
         const type = mapStageToType(stageNum);
 
