@@ -270,14 +270,11 @@ export default function ExercisePage() {
                 : 'Toca para comenzar a grabar'}
             </p>
 
-            {/* Re-record Button */}
+            {/* Mensaje informativo - Grabación finalizada */}
             {recordingUri && (
-              <button
-                onClick={() => setRecordingUri(null)}
-                className="mt-4 text-sm text-indigo-500 font-semibold"
-              >
-                Grabar de nuevo
-              </button>
+              <p className="mt-4 text-sm text-gray-500 italic">
+                Grabación finalizada. Ya no se puede volver a grabar.
+              </p>
             )}
           </div>
         </div>
