@@ -179,7 +179,24 @@ async def transcript(
             if audio_s is None and n_words is not None and n_words > 0:
                 audio_s = n_words / 2.5
         
-        # Calculate metrics if requested
+        # Get exercise from database (needed for reference_transcription and validation)
+        exercise = db.query(ExerciseModel).filter(ExerciseModel.exercise_id == exercise_id).first()
+        if not exercise:
+            exercise = ExerciseModel(
+                stage_id=stage_id,
+                exercise_id=exercise_id,
+                exercise_content=f"Auto-created exercise {exercise_id}",
+            )
+            db.add(exercise)
+            db.flush()
+        
+        # Determine reference_transcription based on stage_id
+        # stage_id = 1 uses exercise_content as reference for precision calculation
+        reference_transcription = None
+        if stage_id == 1:
+            reference_transcription = exercise.exercise_content
+        
+        # Calculate metrics based on stage_id
         metrics_response = None
         metrics_dict = {}
         if transcription_response.text:
@@ -190,24 +207,74 @@ async def transcript(
                 if audio_ms:
                     raw_counts = {"num_words": n_words}
                     
+                    # Calculate all available metrics
                     metrics_result = await calculate_metrics(
                         audio_ms=audio_ms,
                         transcription=transcription_response.text,
+                        reference_transcription=reference_transcription,
                         raw_counts=raw_counts,
                     )
                     
-                    metrics_dict = {
+                    # Filter metrics based on stage_id
+                    all_metrics = {
                         name: MetricScore(raw=val["raw"], score=val["score"])
                         for name, val in metrics_result["metrics"].items()
                     }
                     
+                    # stage_id = 1: precision_transcription, words_per_minute, filler_word_per_minute
+                    # stage_id = 2 or 3: words_per_minute, filler_word_per_minute, lexical_variability
+                    if stage_id == 1:
+                        metrics_dict = {
+                            k: v for k, v in all_metrics.items()
+                            if k in ["precision_transcription", "words_per_minute", "filler_word_per_minute"]
+                        }
+                    else:  # stage_id == 2 or 3
+                        metrics_dict = {
+                            k: v for k, v in all_metrics.items()
+                            if k in ["words_per_minute", "filler_word_per_minute", "lexical_variability"]
+                        }
+                    
+                    # Recalculate dimensions based on filtered metrics
                     dimensions_dict = metrics_result.get("dimensions", {})
-                    dimensions = DimensionScores(
-                        clarity=dimensions_dict.get("clarity"),
-                        rhythm=dimensions_dict.get("rhythm"),
-                        vocabulary=dimensions_dict.get("vocabulary"),
-                        **{k: v for k, v in dimensions_dict.items() if k not in ["clarity", "rhythm", "vocabulary"]}
-                    )
+                    
+                    # For stage_id = 1: clarity uses precision, rhythm uses WPM + FPM
+                    # For stage_id = 2 or 3: rhythm uses WPM + FPM, vocabulary uses lexical_variability
+                    if stage_id == 1:
+                        # Calculate clarity from precision if available
+                        clarity = None
+                        if "precision_transcription" in metrics_dict:
+                            clarity = metrics_dict["precision_transcription"].score
+                        
+                        # Calculate rhythm from WPM and FPM
+                        rhythm_scores = [
+                            metrics_dict[k].score for k in ["words_per_minute", "filler_word_per_minute"]
+                            if k in metrics_dict
+                        ]
+                        rhythm = sum(rhythm_scores) / len(rhythm_scores) if rhythm_scores else None
+                        
+                        dimensions = DimensionScores(
+                            clarity=clarity,
+                            rhythm=rhythm,
+                            vocabulary=None,
+                        )
+                    else:  # stage_id == 2 or 3
+                        # Calculate rhythm from WPM and FPM
+                        rhythm_scores = [
+                            metrics_dict[k].score for k in ["words_per_minute", "filler_word_per_minute"]
+                            if k in metrics_dict
+                        ]
+                        rhythm = sum(rhythm_scores) / len(rhythm_scores) if rhythm_scores else None
+                        
+                        # Calculate vocabulary from lexical_variability
+                        vocabulary = None
+                        if "lexical_variability" in metrics_dict:
+                            vocabulary = metrics_dict["lexical_variability"].score
+                        
+                        dimensions = DimensionScores(
+                            clarity=None,
+                            rhythm=rhythm,
+                            vocabulary=vocabulary,
+                        )
                     
                     metrics_response = MetricsResponse(
                         metrics=metrics_dict,
@@ -218,16 +285,6 @@ async def transcript(
         
         # Save to database
         try:
-            # Ensure exercise exists (create if it doesn't)
-            exercise = db.query(ExerciseModel).filter(ExerciseModel.exercise_id == exercise_id).first()
-            if not exercise:
-                exercise = ExerciseModel(
-                    stage_id=stage_id,
-                    exercise_id=exercise_id,
-                    exercise_content=f"Auto-created exercise {exercise_id}",
-                )
-                db.add(exercise)
-                db.flush()
             
             # Save transcription
             db_transcription = TranscriptionModel(
