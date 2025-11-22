@@ -1,17 +1,27 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, TrendingUp, Volume2, Clock, Target } from 'lucide-react';
+import { Home } from 'lucide-react';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
-interface Metric {
-  name: string;
+interface ExerciseDetail {
+  type: string;
+  title: string;
   score: number;
-  icon: string;
+  feedback: string;
+  transcription: string;
+}
+
+interface ExerciseResult {
+  type: string;
+  [key: string]: unknown;
 }
 
 interface ScoreData {
   overallScore: number;
-  metrics: Metric[];
-  feedback: string;
+  vocabulary: number;
+  rhythm: number;
+  clarity: number;
+  exercises: ExerciseDetail[];
 }
 
 export default function ScorePage() {
@@ -23,33 +33,56 @@ export default function ScorePage() {
   useEffect(() => {
     const analyzeExercises = async () => {
       try {
-        const exerciseResults = JSON.parse(sessionStorage.getItem('exerciseResults') || '[]');
+        const allExerciseResults = JSON.parse(sessionStorage.getItem('exerciseResults') || '[]');
+        const exerciseResults = allExerciseResults.slice(-3) as ExerciseResult[];
 
-        if (exerciseResults.length !== 3) {
-          setError('Incomplete test data');
+        const hasReading = exerciseResults.some((ex: ExerciseResult) => ex.type === 'reading');
+        const hasDescription = exerciseResults.some((ex: ExerciseResult) => ex.type === 'description');
+        const hasQuestion = exerciseResults.some((ex: ExerciseResult) => ex.type === 'question');
+
+        if (exerciseResults.length !== 3 || !hasReading || !hasDescription || !hasQuestion) {
+          setError('Datos de prueba incompletos o incorrectos');
           setLoading(false);
           return;
         }
 
-        // Simulate API call for now - replace with actual API when ready
+        // Simulate API call - replace with real API when ready
         setTimeout(() => {
           const mockScores: ScoreData = {
-            overallScore: 85,
-            metrics: [
-              { name: 'Clarity', score: 88, icon: 'clarity' },
-              { name: 'Fluency', score: 82, icon: 'fluency' },
-              { name: 'Pace', score: 87, icon: 'pace' },
-              { name: 'Accuracy', score: 84, icon: 'accuracy' },
-            ],
-            feedback:
-              'Tu pronunciación es buena, pero puedes mejorar la fluidez en frases más largas.',
+            overallScore: 75,
+            vocabulary: 80,
+            rhythm: 65,
+            clarity: 80,
+            exercises: [
+              {
+                type: 'reading',
+                title: 'LECTURA',
+                score: 75,
+                feedback: 'Tu lectura fue clara y a buen ritmo. Se nota que comprendes el texto. Para mejorar, intenta mantener un tono más natural y evita las pausas muy largas entre palabras.',
+                transcription: 'El veloz zorro marrón salta sobre el perro perezoso. Esta frase contiene muchas letras del alfabeto...'
+              },
+              {
+                type: 'description',
+                title: 'DESCRIPCIÓN',
+                score: 72,
+                feedback: 'Buena capacidad descriptiva y uso de vocabulario variado. Tu claridad al hablar es excelente. Trabaja en mantener un ritmo más constante durante descripciones largas.',
+                transcription: 'Veo un paisaje con montañas hermosas en el fondo, un lago azul y varios árboles...'
+              },
+              {
+                type: 'question',
+                title: 'PREGUNTA',
+                score: 78,
+                feedback: 'Respuesta coherente y bien estructurada. Tu vocabulario es adecuado y la claridad es muy buena. Considera practicar con respuestas más largas para mejorar tu fluidez.',
+                transcription: 'Mis objetivos son mejorar mi pronunciación y hablar con más confianza en público...'
+              }
+            ]
           };
           setScores(mockScores);
           sessionStorage.removeItem('exerciseResults');
           setLoading(false);
         }, 2000);
       } catch (err) {
-        console.error('Error analyzing exercises:', err);
+        console.error('Error al analizar los ejercicios:', err);
         setError((err as Error).message);
         setLoading(false);
       }
@@ -57,18 +90,6 @@ export default function ScorePage() {
 
     analyzeExercises();
   }, []);
-
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-500';
-    if (score >= 60) return 'text-yellow-500';
-    return 'text-red-500';
-  };
-
-  const getScoreBgColor = (score: number) => {
-    if (score >= 80) return 'bg-green-500';
-    if (score >= 60) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
 
   if (loading) {
     return (
@@ -98,9 +119,16 @@ export default function ScorePage() {
     );
   }
 
+  // Preparar datos para el radar chart
+  const radarData = [
+    { dimension: 'Vocabulario', value: scores?.vocabulary || 0, fullMark: 100 },
+    { dimension: 'Ritmo', value: scores?.rhythm || 0, fullMark: 100 },
+    { dimension: 'Claridad', value: scores?.clarity || 0, fullMark: 100 },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pb-20">
         <div className="max-w-2xl mx-auto px-6 py-8">
           {/* Header */}
           <div className="mb-8">
@@ -110,81 +138,105 @@ export default function ScorePage() {
             <p className="text-base text-gray-600">Prueba completada exitosamente</p>
           </div>
 
-          {/* Overall Score Card */}
-          <div className="mb-6">
-            <div className="bg-indigo-500 rounded-2xl p-8 text-center shadow-lg">
-              <p className="text-base text-white/90 mb-2">Puntaje General</p>
-              <p className="text-6xl font-bold text-white mb-2">
-                {scores?.overallScore || 0}
-              </p>
-              <p className="text-lg text-white/90">de 100</p>
-            </div>
-          </div>
-
-          {/* Metrics */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Métricas de Desempeño
-            </h3>
-
-            {scores?.metrics &&
-              scores.metrics.map((metric, index) => (
-                <div
-                  key={index}
-                  className="bg-white rounded-2xl p-5 mb-3 flex items-center border border-gray-200"
-                >
-                  <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mr-4">
-                    {metric.icon === 'clarity' && (
-                      <Volume2 className="text-indigo-500" size={24} />
-                    )}
-                    {metric.icon === 'fluency' && (
-                      <TrendingUp className="text-indigo-500" size={24} />
-                    )}
-                    {metric.icon === 'pace' && (
-                      <Clock className="text-indigo-500" size={24} />
-                    )}
-                    {metric.icon === 'accuracy' && (
-                      <Target className="text-indigo-500" size={24} />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-base font-semibold text-gray-900 mb-1">
-                      {metric.name}
-                    </p>
-                    <div className="flex items-center">
-                      <div className="flex-1 h-2 bg-gray-200 rounded-full mr-3 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${getScoreBgColor(metric.score)}`}
-                          style={{ width: `${metric.score}%` }}
-                        />
-                      </div>
-                      <span className={`text-base font-semibold ${getScoreColor(metric.score)}`}>
-                        {metric.score}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-
-          {/* Feedback */}
-          {scores?.feedback && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Feedback
-              </h3>
-              <div className="bg-white rounded-2xl p-5 border border-gray-200">
-                <p className="text-sm text-gray-700 leading-6">
-                  {scores.feedback}
+          {/* Radar Chart Section */}
+          <div className="bg-white rounded-2xl p-6 mb-6 border border-gray-200">
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              {/* Overall Score */}
+              <div className="flex-shrink-0 text-center">
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Puntaje General
+                </p>
+                <p className="text-7xl font-bold text-indigo-500">
+                  {scores?.overallScore || 0}
                 </p>
               </div>
+
+              {/* Radar Chart */}
+              <div className="flex-1 w-full" style={{ minHeight: '300px' }}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke="#E5E7EB" />
+                    <PolarAngleAxis 
+                      dataKey="dimension" 
+                      tick={{ fill: '#6B7280', fontSize: 14, fontWeight: 600 }}
+                    />
+                    <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} />
+                    <Radar
+                      name="Puntaje"
+                      dataKey="value"
+                      stroke="#6366F1"
+                      fill="#6366F1"
+                      fillOpacity={0.6}
+                      strokeWidth={2}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          )}
+
+            {/* Dimension Breakdown */}
+            <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
+              <div className="text-center">
+                <p className="text-3xl font-bold text-gray-900 mb-1">
+                  {scores?.vocabulary || 0}%
+                </p>
+                <p className="text-sm font-semibold text-gray-600">Vocabulario</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-gray-900 mb-1">
+                  {scores?.rhythm || 0}%
+                </p>
+                <p className="text-sm font-semibold text-gray-600">Ritmo</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-gray-900 mb-1">
+                  {scores?.clarity || 0}%
+                </p>
+                <p className="text-sm font-semibold text-gray-600">Claridad</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Detailed Feedback */}
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Feedback Detallado
+            </h2>
+
+            {scores?.exercises && scores.exercises.map((exercise, index) => (
+              <div key={index} className="bg-white rounded-2xl p-6 mb-4 border border-gray-200">
+                {/* Exercise Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-indigo-500 uppercase tracking-wide">
+                    {exercise.title}
+                  </h3>
+                  <span className="bg-indigo-50 text-indigo-600 px-4 py-1 rounded-full text-sm font-semibold">
+                    Score: {exercise.score}
+                  </span>
+                </div>
+
+                {/* Feedback */}
+                <p className="text-gray-700 leading-relaxed mb-4">
+                  {exercise.feedback}
+                </p>
+
+                {/* Transcription */}
+                <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Transcripción
+                  </p>
+                  <p className="text-sm text-gray-600 italic">
+                    "{exercise.transcription}"
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Bottom Action */}
-      <div className="bg-white border-t border-gray-200 px-6 py-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4">
         <div className="max-w-2xl mx-auto">
           <button
             onClick={() => navigate('/')}

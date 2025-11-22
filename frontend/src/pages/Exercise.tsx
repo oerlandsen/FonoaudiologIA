@@ -276,7 +276,7 @@ export default function ExercisePage() {
                 onClick={() => setRecordingUri(null)}
                 className="mt-4 text-sm text-indigo-500 font-semibold"
               >
-                Record Again
+                Grabar de nuevo
               </button>
             )}
           </div>
