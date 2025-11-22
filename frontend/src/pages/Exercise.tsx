@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import type { ExcerciseResponse } from '../types/requests';
 import exampleService from '../services/exampleService';
 import {
   ArrowLeft,
@@ -11,48 +12,21 @@ import {
   MessageCircle,
   LucideIcon,
 } from 'lucide-react';
-import { uploadTranscript } from '../services/api';
+import { getExcercise, uploadTranscript } from '../services/api';
 
-const EXERCISES: Record<number, {
-  type: string;
-  title: string;
-  icon: LucideIcon;
-  instruction: string;
-  content: string;
-}> = {
-  1: {
-    type: 'reading',
-    title: 'Ejercicio de Lectura',
-    icon: BookOpen,
-    instruction: 'Lee el siguiente texto en voz alta de forma clara y natural',
-    content:
-      'El veloz zorro marrón salta sobre el perro perezoso. Esta frase contiene muchas letras del alfabeto y es comúnmente utilizada para pruebas. Practica hablar claramente y a un ritmo cómodo.',
-  },
-  2: {
-    type: 'description',
-    title: 'Descripción de Imagen',
-    icon: ImageIcon,
-    instruction: 'Describe lo que ves en la imagen a continuación',
-    content:
-      'Imagina un paisaje sereno con montañas en el fondo, un lago azul claro en el primer plano y pinos a lo largo de la orilla. Describe esta escena con tus propias palabras.',
-  },
-  3: {
-    type: 'question',
-    title: 'Pregunta y Respuesta',
-    icon: MessageCircle,
-    instruction: 'Responde la siguiente pregunta',
-    content:
-      '¿Cuáles son tus objetivos para mejorar tu habla, y cómo crees que esta aplicación puede ayudarte a lograrlos?',
-  },
-};
+const ExcerciseIcons = [
+  BookOpen,
+  ImageIcon,
+  MessageCircle,
+]
 
 export default function ExercisePage() {
   const navigate = useNavigate();
   const { step } = useParams<{ step: string }>();
   const currentStep = parseInt(step || '1');
-  const baseExercise = EXERCISES[currentStep];
+  // const baseExercise = EXERCISES[currentStep];
 
-  const [exercise, setExercise] = useState(baseExercise);
+  const [exercise, setExercise] = useState<ExcerciseResponse | undefined>(undefined);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -64,52 +38,84 @@ export default function ExercisePage() {
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    setRecordingUri(null);
-    setIsRecording(false);
-    setIsPlaying(false);
-    setIsImageLoading(true);
-  }, [step, currentStep]);
+  // Helpers: mapping and stage resolution
+  const mapStageToType = (stageNum: number): 'read' | 'description' | 'question' =>
+    stageNum === 1 ? 'read' : stageNum === 2 ? 'description' : 'question';
 
-  const Icon = exercise.icon;
+  const stageMeta = (stageNum: number) => {
+    switch (stageNum) {
+      case 1:
+        return {
+          title: 'Ejercicio de Lectura',
+          instruction: 'Lee el siguiente texto en voz alta de forma clara y natural',
+          type: 'read' as const,
+        };
+      case 2:
+        return {
+          title: 'Descripción de Imagen',
+          instruction: 'Describe lo que ves en la imagen a continuación',
+          type: 'description' as const,
+        };
+      default:
+        return {
+          title: 'Pregunta y Respuesta',
+          instruction: 'Responde la siguiente pregunta',
+          type: 'question' as const,
+        };
+    }
+  };
 
-  // Cargar ejemplos aleatorios al iniciar
   useEffect(() => {
-    const loadRandomExample = async () => {
+    let cancelled = false;
+
+    const load = async () => {
       setIsLoading(true);
+      setIsImageLoading(true);
+      setRecordingUri(null);
+      setIsRecording(false);
+      setIsPlaying(false);
+
       try {
-        let type: 'read' | 'description' | 'question';
-        switch(baseExercise.type) {
-          case 'reading':
-            type = 'read';
-            break;
-          case 'description':
-            type = 'description';
-            break;
-          case 'question':
-            type = 'question';
-            break;
-          default:
-            type = 'read';
+        const info = await getExcercise(currentStep.toString());
+        if (cancelled) return;
+
+        let next = info as ExcerciseResponse | undefined;
+        const stageNum = (info?.stage_id ?? currentStep);
+        const type = mapStageToType(stageNum);
+
+        try {
+          const randomContent = await exampleService.getRandomExample(type);
+          if (!cancelled && next) {
+            next = { ...next, exercise_content: randomContent };
+          }
+        } catch (error) {
+          console.error('Error loading random example:', error);
         }
 
-        const randomContent = await exampleService.getRandomExample(type);
-        setExercise({
-          ...baseExercise,
-          content: randomContent
-        });
-      } catch (error) {
-        console.error('Error loading random example:', error);
-        // Usar el contenido por defecto si hay error
-        setExercise(baseExercise);
+        if (!cancelled) {
+          setExercise(next);
+        }
+      } catch (err) {
+        console.error('Error obteniendo métricas:', err);
+        if (!cancelled) {
+          setExercise(undefined);
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
-    // Cargar ejemplo aleatorio al iniciar y cuando cambia el paso
-    loadRandomExample();
-  }, [currentStep, baseExercise]);
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentStep, step]);
+
+  const stage = (exercise?.stage_id ?? currentStep);
+  const Icon = ExcerciseIcons[Math.max(0, Math.min(2, (stage || 1) - 1))] as LucideIcon;
+  const meta = stageMeta(stage || 1);
 
   const startRecording = useCallback(async () => {
     try {
@@ -172,8 +178,8 @@ export default function ExercisePage() {
 
     try {
       const exerciseData = {
-        step: currentStep,
-        type: exercise.type,
+        step: stage,
+        type: meta.type,
         audioUrl: recordingUri,
         timestamp: new Date().toISOString(),
       };
@@ -194,8 +200,8 @@ export default function ExercisePage() {
         throw new Error(response.error || 'Error desconocido al subir la grabación');
       }
 
-      if (currentStep < 3) {
-        navigate(`/exercise/${currentStep + 1}`);
+      if (stage < 3) {
+        navigate(`/exercise/${(stage || 1) + 1}`);
       } else {
         navigate('/score');
       }
@@ -206,7 +212,7 @@ export default function ExercisePage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [recordingUri, audioBlob, currentStep, exercise, navigate]);
+  }, [recordingUri, audioBlob, stage, meta.type, navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -224,10 +230,10 @@ export default function ExercisePage() {
             </button>
             <div className="flex-1">
               <p className="text-xs text-gray-600 mb-0.5">
-                Paso {currentStep} de 3
+                Paso {stage} de 3
               </p>
               <h2 className="text-lg font-semibold text-gray-900">
-                {exercise.title}
+                {meta.title}
               </h2>
             </div>
           </div>
@@ -238,7 +244,7 @@ export default function ExercisePage() {
               <div
                 key={num}
                 className={`flex-1 h-1 rounded-full ${
-                  num <= currentStep ? 'bg-indigo-500' : 'bg-gray-200'
+                  num <= stage ? 'bg-indigo-500' : 'bg-gray-200'
                 }`}
               />
             ))}
@@ -256,14 +262,14 @@ export default function ExercisePage() {
             </div>
 
             <h3 className="text-base font-semibold text-gray-900 mb-3">
-              {exercise.instruction}
+              {meta.instruction}
             </h3>
 
             {isLoading ? (
               <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500 flex items-center justify-center h-32">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
               </div>
-            ) : exercise.type === 'description' ? (
+            ) : meta.type === 'description' ? (
               <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500 flex justify-center relative min-h-[200px]">
                 {isImageLoading && (
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -271,7 +277,7 @@ export default function ExercisePage() {
                   </div>
                 )}
                 <img 
-                  src={exercise.content} 
+                  src={exercise?.exercise_content}
                   alt="Imagen para describir"
                   className={`max-w-full h-auto rounded max-h-64 object-contain ${isImageLoading ? 'invisible' : 'visible'}`}
                   onLoad={() => setIsImageLoading(false)}
@@ -284,7 +290,7 @@ export default function ExercisePage() {
             ) : (
               <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500">
                 <p className="text-sm text-gray-700 leading-6">
-                  {exercise.content}
+                  {exercise?.exercise_content}
                 </p>
               </div>
             )}
