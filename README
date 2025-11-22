@@ -1,1 +1,93 @@
-Hackathon Platanus
+# 0ratoria
+
+A speech analysis application that helps users improve their oratory skills through interactive exercises and real-time feedback.
+
+**Platanus Hack 2025**
+
+## Overview
+
+0ratoria is a full-stack application that analyzes speech patterns and provides detailed metrics to help users enhance their public speaking abilities. Users complete three types of exercises (reading, description, and Q&A) and receive comprehensive feedback on their performance.
+
+## Features
+
+- 🎤 **Audio Recording**: Record your speech directly in the browser
+- 📝 **Speech Transcription**: Automatic transcription using ElevenLabs
+- 📊 **Speech Metrics**: Analysis of:
+  - Words per minute
+  - Filler words detection
+  - Lexical variability
+  - Transcription precision
+- 📱 **Progressive Web App**: Installable PWA for easy access
+- 🎯 **Interactive Exercises**: Three exercise types to practice different speaking skills
+
+## Tech Stack
+
+### Backend
+- FastAPI (Python)
+- ElevenLabs API (Speech-to-Text)
+- spaCy (NLP for Spanish)
+- Docker
+
+### Frontend
+- React + TypeScript
+- Vite
+- Tailwind CSS
+- React Router
+
+## Project Structure
+
+```
+FonoaudiologIA/
+├── backend/          # FastAPI backend
+│   ├── app/
+│   │   ├── main.py   # API endpoints
+│   │   ├── metrics/  # Speech analysis metrics
+│   │   └── services/ # External service integrations
+│   └── requirements.txt
+└── frontend/         # React frontend
+    ├── src/
+    │   ├── pages/    # Application pages
+    │   ├── components/ # UI components
+    │   └── services/  # API client
+    └── package.json
+```
+
+## Getting Started
+
+### Backend
+
+1. Navigate to the backend directory:
+```bash
+cd backend
+```
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Run the server:
+```bash
+uvicorn app.main:app --reload
+```
+
+### Frontend
+
+1. Navigate to the frontend directory:
+```bash
+cd frontend
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Start the development server:
+```bash
+npm run dev
+```
+
+## License
+
+This project was created for Platanus Hack 2025.
