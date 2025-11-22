@@ -29,8 +29,20 @@ export interface PronunciationError {
 
 export interface AudioUploadResponse {
   success: boolean;
-  audioId?: string;
-  analysis?: AudioAnalysis;
+  session_id?: string;
   error?: string;
 }
 
+export interface DimensionResponse {
+  name: string;
+  score: number;
+  feedback: string;
+}
+
+export interface ResultsResponse {
+  sessionId: string;
+  overallScore: number;
+  dimensions: DimensionResponse[];
+}
+
+export type Language = 'en' | 'es';

@@ -71,7 +71,7 @@ export function getAudioDuration(blob: Blob): Promise<number> {
       }
     });
     
-    audio.addEventListener('error', (e) => {
+    audio.addEventListener('error', () => {
       cleanup();
       reject(new Error('Failed to load audio metadata'));
     });
@@ -90,11 +90,12 @@ export function getAudioDuration(blob: Blob): Promise<number> {
   });
 }
 
-export function prepareAudioForUpload(recording: AudioRecording): FormData {
+export function prepareAudioForUpload(recording: AudioRecording, stageId: string): FormData {
   const formData = new FormData();
   formData.append('audio', recording.blob, `recording-${recording.id}.${getFileExtension(recording.mimeType)}`);
   formData.append('language', 'es'); // Always Spanish
   formData.append('timestamp', recording.timestamp.toISOString());
+  formData.append('stageId', stageId);
   return formData;
 }
 

@@ -25,20 +25,19 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-6 py-8">
-        {/* Header with Logo */}
+        {/* Header */}
         <div className="mb-8">
-          <div className="mb-4">
-            <img 
-              src="/images/oratoria_v3_without_bg.png" 
-              alt="0ratorIA - Human Speech Enhancement" 
-              className="h-20 md:h-40 mx-auto md:mx-0 max-w-full" 
-            />
-          </div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            Speech Coach
+          </h1>
+          <p className="text-base text-gray-600">
+            Mejora tu habla con ejercicios impulsados por IA
+          </p>
         </div>
 
         {/* Start Test Card */}
         <div className="mb-8">
-          <div className="bg-indigo-500 rounded-2xl p-6 shadow-lg flex flex-col items-center text-center">
+          <div className="bg-indigo-500 rounded-2xl p-6 shadow-lg">
             <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mb-4">
               <Mic className="text-white" size={28} />
             </div>
