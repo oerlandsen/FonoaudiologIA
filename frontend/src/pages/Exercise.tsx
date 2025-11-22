@@ -188,7 +188,7 @@ export default function ExercisePage() {
         exerciseData.step.toString(),
         {
           id: `recording-${Date.now()}`,
-          exerciseId: exercise.exercise_id,
+          exerciseId: exercise?.exercise_id,
           sessionId: sessionStorage.getItem('session_id') || undefined,
           blob: audioBlob || new Blob(),
           url: recordingUri,
