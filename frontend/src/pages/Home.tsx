@@ -29,14 +29,11 @@ export default function HomePage() {
         <div className="mb-8">
           <div className="mb-4">
             <img 
-              src="/images/logo.png" 
+              src="/images/oratoria_v3_without_bg.png" 
               alt="0ratorIA - Human Speech Enhancement" 
-              className="h-32 md:h-40 mx-auto md:mx-0 max-w-full" 
+              className="h-20 md:h-40 mx-auto md:mx-0 max-w-full" 
             />
           </div>
-          <p className="text-base text-gray-600 font-bold text-center">
-            Mejora tu habla con ejercicios impulsados por IA
-          </p>
         </div>
 
         {/* Start Test Card */}
