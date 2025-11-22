@@ -227,7 +227,6 @@ export default function ExercisePage() {
                 {isImageLoading && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
-                    <p className="text-base text-gray-600 ml-3">Cargando imagen...</p>
                   </div>
                 )}
                 <img 
