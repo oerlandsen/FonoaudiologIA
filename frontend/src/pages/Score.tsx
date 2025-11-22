@@ -1,97 +1,91 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Info } from 'lucide-react';
+import { Home } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+import { getResults } from '../services/api';
+import { ResultsResponse } from '../types/audio';
 
-interface ExerciseDetail {
-  type: string;
-  title: string;
-  score: number;
-  feedback: string;
-  transcription: string;
-}
+// (Eliminado ExerciseResult: ya no se valida secuencia de ejercicios)
 
-interface ExerciseResult {
-  type: string;
-  [key: string]: unknown;
-}
+// Usamos directamente MetricResponse (feedback requerido)
 
-interface ScoreData {
-  overallScore: number;
-  vocabulary: number;
-  rhythm: number;
-  clarity: number;
-  exercises: ExerciseDetail[];
-}
+// Feedback estático por dimensión (puede venir del backend más adelante)
+const feedbackMap: Record<string, string> = {
+  vocabulary: 'Practica ampliar tu variedad de palabras y evita repeticiones frecuentes.',
+  clarity: 'Tu claridad mejora evitando muletillas y articulando cada sílaba.',
+  rhythm: 'Mantén un ritmo constante; evita acelerarte o hacer pausas muy largas.',
+  overall: 'Buen progreso general; enfócate en balancear ritmo y vocabulario.',
+};
 
 export default function ScorePage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [scores, setScores] = useState<ScoreData | null>(null);
+  // Guardamos el resultado si se requiere en el futuro (no usado directamente ahora)
+  // const [result, setResult] = useState<ResultsResponse | null>(null);
+  const [dimensions, setDimensions] = useState<Array<{ name: string; value: number; feedback?: string }>>([]);
   const [error, setError] = useState<string | null>(null);
-  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+
+  // Procesa el ResultsResponse para extraer dimensiones y calcular overall si falta
+  const updateMetrics = useCallback((r: ResultsResponse) => {
+    const lower = (s: string) => s.toLowerCase();
+    const dims = r.dimensions || [];
+
+    // Normalizar dimensiones (score -> value)
+    const normalized = dims.map(d => ({
+      name: lower(d.name),
+      value: Math.round(d.score),
+      feedback: d.feedback
+    }));
+
+    const findValue = (aliases: string[]) => {
+      const hit = normalized.find(d => aliases.some(a => d.name.includes(a)));
+      return hit ? hit.value : 0;
+    };
+
+    const vocabulary = findValue(['vocabulary','vocabulario']);
+    const clarity = findValue(['clarity','claridad']);
+    const rhythm = findValue(['rhythm','ritmo']);
+    let overall = r.overallScore || findValue(['overall','general','global']);
+    if (!overall) {
+      const present = [vocabulary, clarity, rhythm].filter(v => v > 0);
+      overall = present.length ? Math.round(present.reduce((a,b)=>a+b,0)/present.length) : 0;
+    }
+
+    const derived: Array<{ name:string; value:number; feedback?:string }> = [];
+    if (overall) derived.push({ name:'overall', value: overall, feedback: feedbackMap.overall });
+    if (vocabulary) derived.push({ name:'vocabulary', value: vocabulary, feedback: feedbackMap.vocabulary });
+    if (clarity) derived.push({ name:'clarity', value: clarity, feedback: feedbackMap.clarity });
+    if (rhythm) derived.push({ name:'rhythm', value: rhythm, feedback: feedbackMap.rhythm });
+
+    // Añadir cualquier dimensión adicional que no esté ya incluida
+    const baseNames = derived.map(d => d.name);
+    normalized.forEach(d => {
+      if (!baseNames.includes(d.name)) {
+        derived.push(d);
+      }
+    });
+
+    // setResult(r); // mantenido como comentario hasta que se necesite mostrar detalles de sesión
+    setDimensions(derived);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    const analyzeExercises = async () => {
+    const fetchAndProcess = async () => {
       try {
-        const allExerciseResults = JSON.parse(sessionStorage.getItem('exerciseResults') || '[]');
-        const exerciseResults = allExerciseResults.slice(-3) as ExerciseResult[];
-
-        const hasReading = exerciseResults.some((ex: ExerciseResult) => ex.type === 'reading');
-        const hasDescription = exerciseResults.some((ex: ExerciseResult) => ex.type === 'description');
-        const hasQuestion = exerciseResults.some((ex: ExerciseResult) => ex.type === 'question');
-
-        if (exerciseResults.length !== 3 || !hasReading || !hasDescription || !hasQuestion) {
-          setError('Datos de prueba incompletos o incorrectos');
-          setLoading(false);
-          return;
-        }
-
-        // Simulate API call - replace with real API when ready
-        setTimeout(() => {
-          const mockScores: ScoreData = {
-            overallScore: 75,
-            vocabulary: 80,
-            rhythm: 65,
-            clarity: 80,
-            exercises: [
-              {
-                type: 'reading',
-                title: 'LECTURA',
-                score: 75,
-                feedback: 'Tu lectura fue clara y a buen ritmo. Se nota que comprendes el texto. Para mejorar, intenta mantener un tono más natural y evita las pausas muy largas entre palabras.',
-                transcription: 'El veloz zorro marrón salta sobre el perro perezoso. Esta frase contiene muchas letras del alfabeto...'
-              },
-              {
-                type: 'description',
-                title: 'DESCRIPCIÓN',
-                score: 72,
-                feedback: 'Buena capacidad descriptiva y uso de vocabulario variado. Tu claridad al hablar es excelente. Trabaja en mantener un ritmo más constante durante descripciones largas.',
-                transcription: 'Veo un paisaje con montañas hermosas en el fondo, un lago azul y varios árboles...'
-              },
-              {
-                type: 'question',
-                title: 'PREGUNTA',
-                score: 78,
-                feedback: 'Respuesta coherente y bien estructurada. Tu vocabulario es adecuado y la claridad es muy buena. Considera practicar con respuestas más largas para mejorar tu fluidez.',
-                transcription: 'Mis objetivos son mejorar mi pronunciación y hablar con más confianza en público...'
-              }
-            ]
-          };
-          setScores(mockScores);
-          sessionStorage.removeItem('exerciseResults');
-          setLoading(false);
-        }, 2000);
+        const fetched = await getResults();
+        updateMetrics(fetched);
       } catch (err) {
-        console.error('Error al analizar los ejercicios:', err);
+        console.error('Error obteniendo métricas:', err);
         setError((err as Error).message);
         setLoading(false);
       }
     };
+    fetchAndProcess();
+  }, [updateMetrics]);
 
-    analyzeExercises();
-  }, []);
-
+  // (Placeholder) Si en el futuro se reciben análisis textuales separados
+  // se puede implementar aquí sin afectar la lógica de métricas.
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -120,11 +114,11 @@ export default function ScorePage() {
     );
   }
 
-  // Preparar datos para el radar chart
+  const getDim = (name: string) => dimensions.find(d => d.name === name)?.value || 0;
   const radarData = [
-    { dimension: 'Vocabulario', value: scores?.vocabulary || 0, fullMark: 100 },
-    { dimension: 'Ritmo', value: scores?.rhythm || 0, fullMark: 100 },
-    { dimension: 'Claridad', value: scores?.clarity || 0, fullMark: 100 },
+    { dimension: 'Vocabulario', value: getDim('vocabulary'), fullMark: 100 },
+    { dimension: 'Ritmo', value: getDim('rhythm'), fullMark: 100 },
+    { dimension: 'Claridad', value: getDim('clarity'), fullMark: 100 },
   ];
 
   return (
@@ -136,6 +130,7 @@ export default function ScorePage() {
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
               Tus Resultados
             </h1>
+            <p className="text-base text-gray-600">Prueba completada exitosamente</p>
           </div>
 
           {/* Radar Chart Section */}
@@ -147,7 +142,7 @@ export default function ScorePage() {
                   Puntaje General
                 </p>
                 <p className="text-7xl font-bold text-indigo-500">
-                  {scores?.overallScore || 0}
+                  {getDim('overall') || 0}
                 </p>
               </div>
 
@@ -177,103 +172,51 @@ export default function ScorePage() {
             {/* Dimension Breakdown */}
             <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
               <div className="text-center">
-                <p className="text-4xl text-gray-900 mb-1">
-                  <span className="font-bold">{scores?.vocabulary || 0}</span>
-                  <span className="font-normal text-xl align-bottom">%</span>
+                <p className="text-3xl font-bold text-gray-900 mb-1">
+                  {getDim('vocabulary')}%
                 </p>
-                <div className="flex items-center justify-center gap-1 relative">
-                  <p className="text-sm font-semibold text-gray-600">Vocabulario</p>
-                  <button
-                    onClick={() => setActiveTooltip(activeTooltip === 'vocabulary' ? null : 'vocabulary')}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <Info size={14} />
-                  </button>
-                  {activeTooltip === 'vocabulary' && (
-                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-48 mt-1">
-                      <p className="leading-relaxed">Variedad y riqueza de las palabras usadas.</p>
-                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
-                    </div>
-                  )}
-                </div>
+                <p className="text-sm font-semibold text-gray-600">Vocabulario</p>
               </div>
               <div className="text-center">
-                <p className="text-4xl text-gray-900 mb-1">
-                  <span className="font-bold">{scores?.rhythm || 0}</span>
-                  <span className="font-normal text-xl align-bottom">%</span>
+                <p className="text-3xl font-bold text-gray-900 mb-1">
+                  {getDim('rhythm')}%
                 </p>
-                <div className="flex items-center justify-center gap-1 relative">
-                  <p className="text-sm font-semibold text-gray-600">Ritmo</p>
-                  <button
-                    onClick={() => setActiveTooltip(activeTooltip === 'rhythm' ? null : 'rhythm')}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <Info size={14} />
-                  </button>
-                  {activeTooltip === 'rhythm' && (
-                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-48 mt-1">
-                      <p className="leading-relaxed">Patrón de velocidad y cadencia al hablar, relacionado con la fluidez.</p>
-                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
-                    </div>
-                  )}
-                </div>
+                <p className="text-sm font-semibold text-gray-600">Ritmo</p>
               </div>
               <div className="text-center">
-                <p className="text-4xl text-gray-900 mb-1">
-                  <span className="font-bold">{scores?.clarity || 0}</span>
-                  <span className="font-normal text-xl align-bottom">%</span>
+                <p className="text-3xl font-bold text-gray-900 mb-1">
+                  {getDim('clarity')}%
                 </p>
-                <div className="flex items-center justify-center gap-1 relative">
-                  <p className="text-sm font-semibold text-gray-600">Claridad</p>
-                  <button
-                    onClick={() => setActiveTooltip(activeTooltip === 'clarity' ? null : 'clarity')}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <Info size={14} />
-                  </button>
-                  {activeTooltip === 'clarity' && (
-                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-48 mt-1">
-                      <p className="leading-relaxed">Qué tan fácil es entender lo que dices.</p>
-                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
-                    </div>
-                  )}
-                </div>
+                <p className="text-sm font-semibold text-gray-600">Claridad</p>
               </div>
             </div>
           </div>
 
-          {/* Detailed Feedback */}
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              Feedback Detallado
-            </h2>
-
-            {scores?.exercises && scores.exercises.map((exercise, index) => (
-              <div key={index} className="bg-white rounded-2xl p-6 mb-4 border border-gray-200">
-                {/* Exercise Header */}
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold text-indigo-500 uppercase tracking-wide">
-                    {exercise.title}
-                  </h3>
+          {/* Feedback por dimensión */}
+          {dimensions.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">
+                Feedback por Dimensión
+              </h2>
+              {dimensions.filter(d => ['overall','vocabulary','clarity','rhythm'].includes(d.name)).map(d => (
+                <div key={d.name} className="bg-white rounded-2xl p-6 mb-4 border border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-bold text-indigo-500 uppercase tracking-wide">
+                      {d.name}
+                    </h3>
+                    <span className="bg-indigo-50 text-indigo-600 px-4 py-1 rounded-full text-sm font-semibold">
+                      {d.value}
+                    </span>
+                  </div>
+                  {d.feedback && (
+                    <p className="text-gray-700 leading-relaxed text-sm">
+                      {d.feedback}
+                    </p>
+                  )}
                 </div>
-
-                {/* Feedback */}
-                <p className="text-gray-700 leading-relaxed mb-4">
-                  {exercise.feedback}
-                </p>
-
-                {/* Transcription */}
-                <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                    Transcripción
-                  </p>
-                  <p className="text-sm text-gray-600 italic">
-                    "{exercise.transcription}"
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

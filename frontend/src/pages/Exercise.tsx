@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import exampleService from '../services/exampleService';
 import {
   ArrowLeft,
   Mic,
@@ -11,6 +10,7 @@ import {
   MessageCircle,
   LucideIcon,
 } from 'lucide-react';
+import { uploadTranscript } from '../services/api';
 
 const EXERCISES: Record<number, {
   type: string;
@@ -49,14 +49,13 @@ export default function ExercisePage() {
   const navigate = useNavigate();
   const { step } = useParams<{ step: string }>();
   const currentStep = parseInt(step || '1');
-  const baseExercise = EXERCISES[currentStep];
+  const exercise = EXERCISES[currentStep];
 
-  const [exercise, setExercise] = useState(baseExercise);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -68,44 +67,6 @@ export default function ExercisePage() {
   }, [step, currentStep]);
 
   const Icon = exercise.icon;
-
-  // Cargar ejemplos aleatorios al iniciar
-  useEffect(() => {
-    const loadRandomExample = async () => {
-      setIsLoading(true);
-      try {
-        let type: 'read' | 'description' | 'question';
-        switch(baseExercise.type) {
-          case 'reading':
-            type = 'read';
-            break;
-          case 'description':
-            type = 'description';
-            break;
-          case 'question':
-            type = 'question';
-            break;
-          default:
-            type = 'read';
-        }
-
-        const randomContent = await exampleService.getRandomExample(type);
-        setExercise({
-          ...baseExercise,
-          content: randomContent
-        });
-      } catch (error) {
-        console.error('Error loading random example:', error);
-        // Usar el contenido por defecto si hay error
-        setExercise(baseExercise);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    // Cargar ejemplo aleatorio al iniciar y cuando cambia el paso
-    loadRandomExample();
-  }, [currentStep, baseExercise]);
 
   const startRecording = useCallback(async () => {
     try {
@@ -122,22 +83,8 @@ export default function ExercisePage() {
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(audioBlob);
         const audioUrl = URL.createObjectURL(audioBlob);
-        
-        // Convertir a bytes (ArrayBuffer)
-        const arrayBuffer = await audioBlob.arrayBuffer();
-        
-        // Si necesitas un Uint8Array (array de bytes)
-        const bytes = new Uint8Array(arrayBuffer);
-  
-        console.log('Audio metadata:', {
-          size: `${(audioBlob.size / 1024).toFixed(2)} KB`,
-          type: audioBlob.type,
-          url: audioUrl,
-          dateCreated: new Date().toISOString(),
-          bytes: bytes, 
-          byteLength: bytes.byteLength, 
-        });
   
         setRecordingUri(audioUrl);
         stream.getTracks().forEach(track => track.stop());
@@ -188,21 +135,35 @@ export default function ExercisePage() {
         timestamp: new Date().toISOString(),
       };
 
-      const existingResults = JSON.parse(sessionStorage.getItem('exerciseResults') || '[]');
-      sessionStorage.setItem('exerciseResults', JSON.stringify([...existingResults, exerciseData]));
+      const response = await uploadTranscript(
+        exerciseData.step.toString(),
+        {
+          id: `exercise-${currentStep}-${Date.now()}`,
+          blob: audioBlob || new Blob(),
+          url: recordingUri,
+          duration: 0,
+          timestamp: new Date(),
+          mimeType: 'audio/webm',
+        }
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Error desconocido al subir la grabación');
+      }
 
       if (currentStep < 3) {
         navigate(`/exercise/${currentStep + 1}`);
       } else {
         navigate('/score');
       }
+
     } catch (error) {
       console.error('Error al enviar la grabación:', error);
       alert('No se pudo enviar tu grabación. Inténtalo de nuevo.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [recordingUri, currentStep, exercise, navigate]);
+  }, [recordingUri, audioBlob, currentStep, exercise, navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -255,28 +216,11 @@ export default function ExercisePage() {
               {exercise.instruction}
             </h3>
 
-            {isLoading ? (
-              <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500 flex items-center justify-center h-32">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-              </div>
-            ) : exercise.type === 'description' ? (
-              <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500 flex justify-center">
-                <img 
-                  src={exercise.content} 
-                  alt="Imagen para describir" 
-                  className="max-w-full h-auto rounded max-h-64 object-contain"
-                  onError={(e) => {
-                    e.currentTarget.src = 'https://static.independent.co.uk/s3fs-public/thumbnails/image/2014/09/19/16/Pivot-Friends.jpg';
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500">
-                <p className="text-sm text-gray-700 leading-6">
-                  {exercise.content}
-                </p>
-              </div>
-            )}
+            <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-indigo-500">
+              <p className="text-sm text-gray-700 leading-6">
+                {exercise.content}
+              </p>
+            </div>
           </div>
 
           {/* Recording Controls */}
@@ -328,11 +272,14 @@ export default function ExercisePage() {
                 : 'Toca para comenzar a grabar'}
             </p>
 
-            {/* Mensaje informativo - Grabación finalizada */}
+            {/* Re-record Button */}
             {recordingUri && (
-              <p className="mt-4 text-sm text-gray-500 italic">
-                Grabación finalizada. Ya no se puede volver a grabar.
-              </p>
+              <button
+                onClick={() => setRecordingUri(null)}
+                className="mt-4 text-sm text-indigo-500 font-semibold"
+              >
+                Grabar de nuevo
+              </button>
             )}
           </div>
         </div>
