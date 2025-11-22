@@ -18,6 +18,7 @@ export default function ScorePage() {
   const [loading, setLoading] = useState(true);
   const [dimensions, setDimensions] = useState<Array<{ name: string; value: number; feedback?: string }>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
   const updateMetrics = useCallback((r: ResultsResponse) => {
     const lower = (s: string) => s.toLowerCase();
@@ -162,22 +163,67 @@ export default function ScorePage() {
             {/* Dimension Breakdown */}
             <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
               <div className="text-center">
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  {getDim('vocabulary')}%
+                <p className="text-3xl text-gray-900 mb-1">
+                  <span className="font-bold">{getDim('vocabulary')}</span>
+                  <span className="font-normal text-xl align-bottom">%</span>
                 </p>
-                <p className="text-sm font-semibold text-gray-600">Vocabulario</p>
+                <div className="flex items-center justify-center gap-1 relative">
+                  <p className="text-sm font-semibold text-gray-600">Vocabulario</p>
+                  <button
+                    onClick={() => setActiveTooltip(activeTooltip === 'vocabulary' ? null : 'vocabulary')}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <Info size={14} />
+                  </button>
+                  {activeTooltip === 'vocabulary' && (
+                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-48 mt-1">
+                      <p className="leading-relaxed">Variedad y riqueza de las palabras usadas.</p>
+                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  {getDim('rhythm')}%
+                <p className="text-3xl text-gray-900 mb-1">
+                  <span className="font-bold">{getDim('rhythm')}</span>
+                  <span className="font-normal text-xl align-bottom">%</span>
                 </p>
-                <p className="text-sm font-semibold text-gray-600">Ritmo</p>
+                <div className="flex items-center justify-center gap-1 relative">
+                  <p className="text-sm font-semibold text-gray-600">Ritmo</p>
+                  <button
+                    onClick={() => setActiveTooltip(activeTooltip === 'rhythm' ? null : 'rhythm')}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <Info size={14} />
+                  </button>
+                  {activeTooltip === 'rhythm' && (
+                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-48 mt-1">
+                      <p className="leading-relaxed">Patrón de velocidad y cadencia al hablar, relacionado con la fluidez.</p>
+                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  {getDim('clarity')}%
+                <p className="text-3xl text-gray-900 mb-1">
+                  <span className="font-bold">{getDim('clarity')}</span>
+                  <span className="font-normal text-xl align-bottom">%</span>
                 </p>
-                <p className="text-sm font-semibold text-gray-600">Claridad</p>
+                <div className="flex items-center justify-center gap-1 relative">
+                  <p className="text-sm font-semibold text-gray-600">Claridad</p>
+                  <button
+                    onClick={() => setActiveTooltip(activeTooltip === 'clarity' ? null : 'clarity')}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <Info size={14} />
+                  </button>
+                  {activeTooltip === 'clarity' && (
+                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-48 mt-1">
+                      <p className="leading-relaxed">Qué tan fácil es entender lo que dices.</p>
+                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -190,13 +236,10 @@ export default function ScorePage() {
               </h2>
               {dimensions.filter(d => ['overall','vocabulary','clarity','rhythm'].includes(d.name)).map(d => (
                 <div key={d.name} className="bg-white rounded-2xl p-6 mb-4 border border-gray-200">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="mb-2">
                     <h3 className="text-lg font-bold text-indigo-500 uppercase tracking-wide">
                       {d.name}
                     </h3>
-                    <span className="bg-indigo-50 text-indigo-600 px-4 py-1 rounded-full text-sm font-semibold">
-                      {d.value}
-                    </span>
                   </div>
                   {d.feedback && (
                     <p className="text-gray-700 leading-relaxed text-sm">
