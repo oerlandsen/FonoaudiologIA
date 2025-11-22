@@ -1,13 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { getResults } from '../services/api';
 import { ResultsResponse } from '../types/audio';
-
-// (Eliminado ExerciseResult: ya no se valida secuencia de ejercicios)
-
-// Usamos directamente MetricResponse (feedback requerido)
 
 // Feedback estático por dimensión (puede venir del backend más adelante)
 const feedbackMap: Record<string, string> = {
@@ -20,17 +15,13 @@ const feedbackMap: Record<string, string> = {
 export default function ScorePage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  // Guardamos el resultado si se requiere en el futuro (no usado directamente ahora)
-  // const [result, setResult] = useState<ResultsResponse | null>(null);
   const [dimensions, setDimensions] = useState<Array<{ name: string; value: number; feedback?: string }>>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Procesa el ResultsResponse para extraer dimensiones y calcular overall si falta
   const updateMetrics = useCallback((r: ResultsResponse) => {
     const lower = (s: string) => s.toLowerCase();
     const dims = r.dimensions || [];
 
-    // Normalizar dimensiones (score -> value)
     const normalized = dims.map(d => ({
       name: lower(d.name),
       value: Math.round(d.score),
@@ -57,7 +48,6 @@ export default function ScorePage() {
     if (clarity) derived.push({ name:'clarity', value: clarity, feedback: feedbackMap.clarity });
     if (rhythm) derived.push({ name:'rhythm', value: rhythm, feedback: feedbackMap.rhythm });
 
-    // Añadir cualquier dimensión adicional que no esté ya incluida
     const baseNames = derived.map(d => d.name);
     normalized.forEach(d => {
       if (!baseNames.includes(d.name)) {
@@ -65,7 +55,6 @@ export default function ScorePage() {
       }
     });
 
-    // setResult(r); // mantenido como comentario hasta que se necesite mostrar detalles de sesión
     setDimensions(derived);
     setLoading(false);
   }, []);
