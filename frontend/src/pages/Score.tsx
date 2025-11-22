@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home } from 'lucide-react';
+import { Home, Info } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 interface ExerciseDetail {
@@ -29,6 +29,7 @@ export default function ScorePage() {
   const [loading, setLoading] = useState(true);
   const [scores, setScores] = useState<ScoreData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
   useEffect(() => {
     const analyzeExercises = async () => {
@@ -135,7 +136,6 @@ export default function ScorePage() {
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
               Tus Resultados
             </h1>
-            <p className="text-base text-gray-600">Prueba completada exitosamente</p>
           </div>
 
           {/* Radar Chart Section */}
@@ -177,22 +177,67 @@ export default function ScorePage() {
             {/* Dimension Breakdown */}
             <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
               <div className="text-center">
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  {scores?.vocabulary || 0}%
+                <p className="text-4xl text-gray-900 mb-1">
+                  <span className="font-bold">{scores?.vocabulary || 0}</span>
+                  <span className="font-normal text-xl align-bottom">%</span>
                 </p>
-                <p className="text-sm font-semibold text-gray-600">Vocabulario</p>
+                <div className="flex items-center justify-center gap-1 relative">
+                  <p className="text-sm font-semibold text-gray-600">Vocabulario</p>
+                  <button
+                    onClick={() => setActiveTooltip(activeTooltip === 'vocabulary' ? null : 'vocabulary')}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <Info size={14} />
+                  </button>
+                  {activeTooltip === 'vocabulary' && (
+                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-56 mt-1">
+                      <p className="leading-relaxed">Variedad y riqueza de las palabras usadas: cuántos términos distintos empleas y cuán repetitivo es el lenguaje.</p>
+                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  {scores?.rhythm || 0}%
+                <p className="text-4xl text-gray-900 mb-1">
+                  <span className="font-bold">{scores?.rhythm || 0}</span>
+                  <span className="font-normal text-xl align-bottom">%</span>
                 </p>
-                <p className="text-sm font-semibold text-gray-600">Ritmo</p>
+                <div className="flex items-center justify-center gap-1 relative">
+                  <p className="text-sm font-semibold text-gray-600">Ritmo</p>
+                  <button
+                    onClick={() => setActiveTooltip(activeTooltip === 'rhythm' ? null : 'rhythm')}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <Info size={14} />
+                  </button>
+                  {activeTooltip === 'rhythm' && (
+                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-56 mt-1">
+                      <p className="leading-relaxed">Patrón de velocidad y cadencia al hablar, vinculado a la fluidez global e influido por la presencia de pausas y muletillas.</p>
+                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  {scores?.clarity || 0}%
+                <p className="text-4xl text-gray-900 mb-1">
+                  <span className="font-bold">{scores?.clarity || 0}</span>
+                  <span className="font-normal text-xl align-bottom">%</span>
                 </p>
-                <p className="text-sm font-semibold text-gray-600">Claridad</p>
+                <div className="flex items-center justify-center gap-1 relative">
+                  <p className="text-sm font-semibold text-gray-600">Claridad</p>
+                  <button
+                    onClick={() => setActiveTooltip(activeTooltip === 'clarity' ? null : 'clarity')}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <Info size={14} />
+                  </button>
+                  {activeTooltip === 'clarity' && (
+                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 w-56 mt-1">
+                      <p className="leading-relaxed">Qué tan fácil es entender lo que dices: si las palabras se escuchan nítidas, sin errores importantes y con ideas bien articuladas.</p>
+                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -206,13 +251,10 @@ export default function ScorePage() {
             {scores?.exercises && scores.exercises.map((exercise, index) => (
               <div key={index} className="bg-white rounded-2xl p-6 mb-4 border border-gray-200">
                 {/* Exercise Header */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="mb-4">
                   <h3 className="text-lg font-bold text-indigo-500 uppercase tracking-wide">
                     {exercise.title}
                   </h3>
-                  <span className="bg-indigo-50 text-indigo-600 px-4 py-1 rounded-full text-sm font-semibold">
-                    Score: {exercise.score}
-                  </span>
                 </div>
 
                 {/* Feedback */}
