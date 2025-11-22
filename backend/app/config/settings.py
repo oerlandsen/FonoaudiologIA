@@ -12,9 +12,6 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     CORS_ORIGINS: Union[str, List[str]] = ["*"]
-    
-    # Database settings
-    DATABASE_URL: str = "postgresql+asyncpg://marraqueta:marraqueta@localhost:5432/marraqueta"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
