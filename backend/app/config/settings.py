@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     CORS_ORIGINS: Union[str, List[str]] = ["*"]
+    
+    # Database settings
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/marraqueta"
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "marraqueta"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
