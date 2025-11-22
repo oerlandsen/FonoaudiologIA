@@ -1,4 +1,4 @@
-export interface ExcerciseResponse {
+export interface ExerciseResponse {
   id: number;
   stage_id: number;
   exercise_id: number;

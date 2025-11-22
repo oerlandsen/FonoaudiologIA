@@ -12,7 +12,7 @@ import {
   MessageCircle,
   LucideIcon,
 } from 'lucide-react';
-import { getExcercise, uploadTranscript } from '../services/api';
+import { getExercise, uploadTranscript } from '../services/api';
 
 const ExcerciseIcons = [
   BookOpen,
@@ -76,7 +76,7 @@ export default function ExercisePage() {
       setIsPlaying(false);
 
       try {
-        const info = await getExcercise(currentStep.toString());
+        const info = await getExercise(currentStep.toString());
         if (cancelled) return;
 
         let next = info as ExcerciseResponse | undefined;
