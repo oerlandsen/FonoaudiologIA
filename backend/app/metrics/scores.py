@@ -14,12 +14,12 @@ Implements:
 
 from __future__ import annotations
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Set
 import json
 import os
 import re
-from count_filler_words import count_filler_words_from_file
-from lexical_variability import compute_spanish_lexical_variability
+from app.metrics.count_filler_words import count_filler_words_from_file
+from app.metrics.lexical_variability import compute_spanish_lexical_variability
 import spacy
 
 JsonDict = Dict[str, Any]
@@ -214,17 +214,36 @@ def measure_speech_metrics(
     raw_counts: Optional[Dict[str, Any]] = None,
     parameters_path: str = "parameters.json",
     filler_words_path: str = "filler_words.json",
+    _cached_nlp: Optional[Any] = None,
+    _cached_parameters: Optional[Dict[str, Any]] = None,
+    _cached_filler_words: Optional[Set[str]] = None,
 ) -> Dict[str, Any]:
     """
     Compute speech metrics, normalize them to scores in [0, 100],
     and aggregate dimension scores.
+
+    Args:
+        audio_ms: Audio duration in milliseconds
+        transcription: Transcribed text
+        reference_transcription: Reference/golden transcription (optional)
+        summary: Summary text (optional)
+        raw_counts: Pre-computed counts (optional)
+        parameters_path: Path to parameters.json (used if _cached_parameters not provided)
+        filler_words_path: Path to filler_words.json (used if _cached_filler_words not provided)
+        _cached_nlp: Pre-loaded spaCy model (optional, for performance)
+        _cached_parameters: Cached parameters dict (optional, for performance)
+        _cached_filler_words: Cached filler words set (optional, for performance)
 
     Returns a dict with keys:
       - "metrics": {metric_name: {"raw": float, "score": float}}
       - "dimensions": {dimension_name: float or None}
       - "metadata": {...}
     """
-    params = _load_parameters(parameters_path)
+    # Use cached parameters if provided, otherwise load from file
+    if _cached_parameters is not None:
+        params = _cached_parameters
+    else:
+        params = _load_parameters(parameters_path)
     metrics_cfg: JsonDict = params.get("metrics", {})
     dims_cfg: JsonDict = params.get("dimensions", {})
 
@@ -255,14 +274,20 @@ def measure_speech_metrics(
     # filler words: use raw_counts if provided, otherwise compute from transcription
     num_filler_words = raw_counts.get("num_filler_words")
     if num_filler_words is None and transcription:
-        try:
-            num_filler_words = count_filler_words_from_file(
-                transcription=transcription,
-                filler_words_path=filler_words_path,
-            )
-        except FileNotFoundError:
-            # If filler_words.json is missing, we just skip this metric later
-            num_filler_words = None
+        if _cached_filler_words is not None:
+            # Use cached filler words set for fast counting
+            tokens = _tokenize(transcription)
+            num_filler_words = sum(1 for tok in tokens if tok.lower() in _cached_filler_words)
+        else:
+            # Fallback to file-based counting
+            try:
+                num_filler_words = count_filler_words_from_file(
+                    transcription=transcription,
+                    filler_words_path=filler_words_path,
+                )
+            except FileNotFoundError:
+                # If filler_words.json is missing, we just skip this metric later
+                num_filler_words = None
 
     if isinstance(num_filler_words, (int, float)):
         metadata["num_filler_words"] = int(num_filler_words)
@@ -353,7 +378,8 @@ def measure_speech_metrics(
         metadata["used_summary_for_lexical_variability"] = True
 
     if cfg and text_for_lex:
-        nlp = get_spanish_nlp()
+        # Use cached nlp if provided, otherwise get from lazy loader
+        nlp = _cached_nlp if _cached_nlp is not None else get_spanish_nlp()
         lex_details = compute_spanish_lexical_variability(text_for_lex, nlp=nlp)
         metadata["lexical_details"] = lex_details
         metadata["lexical_variability_source"] = "distinct_1_no_stopwords"

@@ -6,5 +6,6 @@ ruff==0.1.6
 pytest==7.4.3
 elevenlabs==2.24.0
 python-multipart
+mutagen>=1.47.0
 # Metrics module dependencies
 spacy==3.8.11
