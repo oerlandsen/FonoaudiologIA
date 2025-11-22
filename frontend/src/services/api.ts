@@ -1,8 +1,8 @@
 
-import type { AudioRecording, AudioUploadResponse, ResultsResponse } from '../types/audio';
+import type { AudioRecording, AudioUploadResponse } from '../types/audio';
+import type { ResultsResponse, ExcerciseResponse } from '../types/requests';
 import { prepareAudioForUpload } from '../utils/audioUtils';
 
-// TODO: Update this URL when backend is ready
 const API_BASE_URL = import.meta.env.API_URL || 'http://localhost:8000';
 
 export async function getSession(): Promise<string | null> {
@@ -20,6 +20,22 @@ export async function getSession(): Promise<string | null> {
   } catch (error) {
     console.error('Error obtaining session ID:', error);
     return null;
+  }
+}
+
+export async function getExcercise(stepId: string): Promise<ExcerciseResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/exercise/${stepId}`, {
+      method: 'GET',
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('Failed to fetch exercise');
   }
 }
 

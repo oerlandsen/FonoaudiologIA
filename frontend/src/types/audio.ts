@@ -33,16 +33,4 @@ export interface AudioUploadResponse {
   error?: string;
 }
 
-export interface DimensionResponse {
-  name: string;
-  score: number;
-  feedback: string;
-}
-
-export interface ResultsResponse {
-  session_id: string;
-  overallScore: number;
-  dimensions: DimensionResponse[];
-}
-
 export type Language = 'en' | 'es';

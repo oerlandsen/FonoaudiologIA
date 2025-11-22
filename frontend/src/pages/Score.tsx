@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Info } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { getResults } from '../services/api';
-import { ResultsResponse } from '../types/audio';
+import { ResultsResponse } from '../types/requests';
 
 // Feedback estático por dimensión (puede venir del backend más adelante)
 const feedbackMap: Record<string, string> = {
