@@ -37,7 +37,17 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    """Load and verify that metrics resources are loaded at startup."""
+    """Initialize application resources at startup."""
+    # Create database tables if they don't exist
+    try:
+        from app.database import create_tables
+        create_tables()
+        print("✓ Database tables initialized")
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {str(e)}", exc_info=True)
+        print(f"⚠ Warning: Failed to create database tables: {e}")
+    
+    # Load and verify that metrics resources are loaded at startup
     from app.services.metrics_service import _load_resources
     try:
         _load_resources()

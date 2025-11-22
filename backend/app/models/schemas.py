@@ -1,6 +1,7 @@
 """Pydantic models for request/response validation."""
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
+from datetime import datetime
 
 
 class HealthResponse(BaseModel):
@@ -54,4 +55,83 @@ class TranscriptionResponse(BaseModel):
     audio_s: Optional[float] = Field(None, description="Audio duration in seconds")
     n_words: Optional[int] = Field(None, description="Number of words")
     metrics: Optional[MetricsResponse] = Field(None, description="Speech metrics (optional)")
+
+
+# Database Model Schemas
+
+class ExerciseCreate(BaseModel):
+    """Exercise creation schema."""
+    
+    stage_id: int = Field(..., description="Stage ID", example=1)
+    exercise_id: int = Field(..., description="Exercise ID", example=101)
+    exercise_content: str = Field(..., description="Exercise content (text or image name)", example="Read the following text aloud")
+
+
+class ExerciseResponse(BaseModel):
+    """Exercise response schema."""
+    
+    id: int = Field(..., description="Exercise database ID")
+    stage_id: int = Field(..., description="Stage ID")
+    exercise_id: int = Field(..., description="Exercise ID")
+    exercise_content: str = Field(..., description="Exercise content")
+    created_at: datetime = Field(..., description="Creation timestamp")
+    updated_at: datetime = Field(..., description="Last update timestamp")
+    
+    class Config:
+        """Pydantic config."""
+        from_attributes = True
+
+
+class TranscriptionCreate(BaseModel):
+    """Transcription creation schema."""
+    
+    stage_id: int = Field(..., description="Stage ID", example=1)
+    transcription: str = Field(..., description="Transcription text", example="This is a sample transcription")
+    length: float = Field(..., description="Audio length in seconds", example=45.5)
+    exercise_id: int = Field(..., description="Exercise ID", example=101)
+    session_id: int = Field(..., description="Session ID", example=1)
+
+
+class TranscriptionResponseDB(BaseModel):
+    """Transcription database response schema."""
+    
+    id: int = Field(..., description="Transcription database ID")
+    stage_id: int = Field(..., description="Stage ID")
+    transcription: str = Field(..., description="Transcription text")
+    length: float = Field(..., description="Audio length in seconds")
+    exercise_id: int = Field(..., description="Exercise ID")
+    session_id: int = Field(..., description="Session ID")
+    created_at: datetime = Field(..., description="Creation timestamp")
+    updated_at: datetime = Field(..., description="Last update timestamp")
+    
+    class Config:
+        """Pydantic config."""
+        from_attributes = True
+
+
+class MetricCreate(BaseModel):
+    """Metric creation schema."""
+    
+    stage_id: int = Field(..., description="Stage ID", example=1)
+    name: str = Field(..., description="Metric name", example="filler_words")
+    value: float = Field(..., description="Metric raw value", example=5.2)
+    score: float = Field(..., ge=0, le=100, description="Metric score as percentage (0-100)", example=85.5)
+    session_id: int = Field(..., description="Session ID", example=1)
+
+
+class MetricResponse(BaseModel):
+    """Metric response schema."""
+    
+    id: int = Field(..., description="Metric database ID")
+    stage_id: int = Field(..., description="Stage ID")
+    name: str = Field(..., description="Metric name")
+    value: float = Field(..., description="Metric raw value")
+    score: float = Field(..., description="Metric score as percentage (0-100)")
+    session_id: int = Field(..., description="Session ID")
+    created_at: datetime = Field(..., description="Creation timestamp")
+    updated_at: datetime = Field(..., description="Last update timestamp")
+    
+    class Config:
+        """Pydantic config."""
+        from_attributes = True
 
