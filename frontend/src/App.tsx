@@ -6,6 +6,7 @@ import ExercisePage from './pages/Exercise';
 import ScorePage from './pages/Score';
 import ResultsPage from './pages/Results';
 import SplashScreen from './components/SplashScreen';
+import EnhanceSpeech from './components/EnhanceSpeech';
 
 function App() {
   const { isInstallable, installApp } = usePWA();
@@ -40,6 +41,7 @@ function App() {
         <Route path="/exercise/:step" element={<ExercisePage />} />
         <Route path="/score" element={<ScorePage />} />
         <Route path="/results" element={<ResultsPage />} />
+        <Route path="/enhance" element={<EnhanceSpeech />} />
       </Routes>
     </BrowserRouter>
   );
