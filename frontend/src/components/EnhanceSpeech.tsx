@@ -22,8 +22,6 @@ export function EnhanceSpeech() {
   const [transcript, setTranscript] = useState<string>('');
   const [cleanedText, setCleanedText] = useState<string>('');
   const [enhancedAudioUrl, setEnhancedAudioUrl] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const voiceId = '2EiwWnXFnvU5JabPnv8n';
