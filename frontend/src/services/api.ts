@@ -3,10 +3,12 @@ import type { AudioRecording, AudioUploadResponse } from '../types/audio';
 import type { ResultsResponse, ExerciseResponse } from '../types/requests';
 import { prepareAudioForUpload } from '../utils/audioUtils';
 
-const API_BASE_URL = import.meta.env.API_URL || 'http://localhost:8000';
+// Vite only exposes env variables prefixed with VITE_
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export async function getSession(): Promise<string | null> {
   try {
+    console.log(API_BASE_URL);
     const response = await fetch(`${API_BASE_URL}/start`, {
       method: 'POST',
     });

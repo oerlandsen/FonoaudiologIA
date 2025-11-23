@@ -72,6 +72,9 @@ export default function HomePage() {
 
         {/* Exercise Overview */}
         <div>
+          <div>
+            <button onClick={() => navigate('/enhance')}>Ir a Enhance Speech</button>
+          </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Resumen de los ejercicios
           </h3>
