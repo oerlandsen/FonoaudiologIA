@@ -11,6 +11,7 @@ export interface DimensionResponse {
   name: string;
   score: number;
   feedback: string;
+  metrics?: Array<any>;
 }
 
 export interface ResultsResponse {

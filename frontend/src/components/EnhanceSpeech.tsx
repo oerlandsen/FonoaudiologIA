@@ -29,7 +29,7 @@ export function EnhanceSpeech() {
   const [includeFeedbackAudio, setIncludeFeedbackAudio] = useState(false);
   
 
-  const voiceId = '2EiwWnXFnvU5JabPnv8n';
+  const voiceId = 'CwhRBWXzGAHq8TQ4Fs17';
   const [feedbackText, setFeedbackText] = useState<string>('');
   const [feedbackAudioUrl, setFeedbackAudioUrl] = useState<string | null>(null);
   const [activePlayer, setActivePlayer] = useState<'original' | 'enhanced' | 'feedback'>('original');
@@ -413,14 +413,14 @@ export function EnhanceSpeech() {
                   (e.target as HTMLInputElement).value = '';
                 }}
               />
-              <button
+              {/* <button
                 type="button"
                 onClick={() => document.getElementById('hidden-audio-input')?.click()}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-indigo-600 bg-white border border-indigo-100 rounded-full shadow-md hover:shadow-lg hover:bg-indigo-50 transform transition"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v11"/><path d="M8 5a4 4 0 008 0"/><path d="M19 11a7 7 0 01-14 0"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
                 <span>Subir audio</span>
-              </button>
+              </button> */}
             </div>
           </div>
 
