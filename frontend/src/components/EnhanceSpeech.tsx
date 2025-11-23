@@ -7,15 +7,6 @@ import { AudioPlayer } from './AudioPlayer';
 import type { AudioRecording } from '../types/audio';
 import fillerWordsJson from '../utils/filler_words.json';
 
-/**
- * EnhanceSpeech
- * - Frontend-only chained agents pipeline (STT -> Cleaner -> TTS)
- * - Uses client-side fetch to call ElevenLabs (STT/TTS) and OpenAI (cleaner)
- * - Requires environment variables: VITE_OPENAI_API_KEY and VITE_ELEVENLABS_API_KEY
- *
- * IMPORTANT: Exposing API keys in frontend is insecure for production.
- * Recommended: move these calls to a backend for real deployments.
- */
 export function EnhanceSpeech() {
   const navigate = useNavigate();
   const [recording, setRecording] = useState<AudioRecording | null>(null);
@@ -42,7 +33,6 @@ export function EnhanceSpeech() {
     try {
       if (!isRecording) {
         await startRecording();
-        setStatus('Grabando');
         return;
       }
 
@@ -65,7 +55,6 @@ export function EnhanceSpeech() {
         setTranscript('');
         setCleanedText('');
         setEnhancedAudioUrl(null);
-        setStatus('Grabación lista');
         
         // Automatically trigger pipeline processing
         handleRunPipeline(rec);
@@ -207,9 +196,6 @@ export function EnhanceSpeech() {
       return;
     }
 
-    setIsProcessing(true);
-    setStatus('Optimizando con IA');
-
     try {
       // Agent 1
       const stt = await transcribeWithElevenLabs(recToUse.blob as Blob);
@@ -230,13 +216,9 @@ export function EnhanceSpeech() {
         console.warn('Enhanced TTS failed', ttsErr);
       }
 
-      setStatus('Optimización lista');
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : String(err));
-      setStatus(null);
-    } finally {
-      setIsProcessing(false);
     }
   }
 
@@ -315,7 +297,7 @@ export function EnhanceSpeech() {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-6 py-6">
           <div className="bg-white rounded-2xl p-6 border border-gray-200 overflow-hidden">
-            <div className="grid md:grid-cols-2 gap-6 items-start">
+        <div className="grid md:grid-cols-2 gap-6 items-center">
         <div className="flex flex-col items-center justify-center gap-4 min-w-0">
           <button
             onClick={handleCentralToggle}
