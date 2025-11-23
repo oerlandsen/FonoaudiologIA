@@ -418,6 +418,27 @@ async def get_exercise(
         logger.error(f"Failed to get exercise: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get exercise: {str(e)}") 
 
+@app.get("/results", response_model=FinalScoresResponse, tags=["results"])
+async def get_results(
+    session_id: int = Query(..., description="Session ID"),
+    db: Session = Depends(get_db),
+) -> FinalScoresResponse:
+    """Get final scores for a session.
+    
+    Calculates and returns aggregated final scores across all exercises
+    in the session, including dimension scores (clarity, rhythm, vocabulary).
+    """
+    try:
+        final_scores = _calculate_final_scores(db, session_id)
+        return final_scores
+    except Exception as e:
+        logger.error(
+            f"Failed to calculate final scores: {str(e)}",
+            exc_info=True
+        )
+        # Return empty final scores response on error
+        return FinalScoresResponse(dimensions=[])
+
 @app.post("/transcript", tags=["transcription"])
 async def transcript(
     audio: UploadFile = File(...),
@@ -511,20 +532,6 @@ async def transcript(
                 metrics_dict=metrics_dict,
             )
             
-            # For stage_id == 3, always return final scores
-            if stage_id == 3:
-                try:
-                    final_scores = _calculate_final_scores(db, session_id)
-                    return JSONResponse(content=final_scores.model_dump())
-                except Exception as e:
-                    logger.error(
-                        f"Failed to calculate final scores: {str(e)}",
-                        exc_info=True
-                    )
-                    # Return empty final scores response on error
-                    return JSONResponse(
-                        content=FinalScoresResponse(dimensions=[]).model_dump()
-                    )
         
         except Exception as db_error:
             db.rollback()
