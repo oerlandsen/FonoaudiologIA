@@ -2,25 +2,14 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Info, ChevronDown } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-/* import { getResults } from '../services/api'; // Comentado: no se conecta al backend */
+import { getResults } from '../services/api';
 import { ResultsResponse } from '../types/requests';
 
-// Feedback estático por dimensión (puede venir del backend más adelante)
-const feedbackMap: Record<string, string> = {
-  vocabulary: 'Practica ampliar tu variedad de palabras y evita repeticiones frecuentes.',
-  clarity: 'Tu claridad mejora evitando muletillas y articulando cada sílaba.',
-  rhythm: 'Mantén un ritmo constante; evita acelerarte o hacer pausas muy largas.',
-  overall: 'Buen progreso general; enfócate en balancear ritmo y vocabulario.',
-};
 
 // Tipos extendidos para soportar métricas detalladas desde el backend
 type MetricScore = {
   raw?: number;
   score?: number;
-};
-
-type ResultsWithMetrics = ResultsResponse & {
-  metrics?: Record<string, MetricScore>;
 };
 
 const METRIC_LABELS: Record<string, string> = {
@@ -55,44 +44,27 @@ export default function ScorePage() {
     const lower = (s: string) => s.toLowerCase();
     const dims = results.dimensions || [];
 
+    // Mapear dimensiones con su feedback real del backend
     const normalized = dims.map(d => ({
       name: lower(d.name),
       value: Math.round(d.score),
       feedback: d.feedback
     }));
 
-    const findValue = (aliases: string[]) => {
-      const hit = normalized.find(d => aliases.some(a => d.name.includes(a)));
-      return hit ? hit.value : 0;
-    };
+    // Usar las dimensiones tal cual vienen del backend, con su feedback incluido
+    setDimensions(normalized);
 
-    const vocabulary = findValue(['vocabulary','vocabulario']);
-    const clarity = findValue(['clarity','claridad']);
-    const rhythm = findValue(['rhythm','ritmo']);
-    let overall = findValue(['overall','general']);
-    if (!overall) {
-      const present = [vocabulary, clarity, rhythm].filter(v => v > 0);
-      overall = present.length ? Math.round(present.reduce((a,b)=>a+b,0)/present.length) : 0;
-    }
-
-    const derived: Array<{ name:string; value:number; feedback?:string }> = [];
-    if (overall) derived.push({ name:'overall', value: overall, feedback: feedbackMap.overall });
-    if (vocabulary) derived.push({ name:'vocabulary', value: vocabulary, feedback: feedbackMap.vocabulary });
-    if (clarity) derived.push({ name:'clarity', value: clarity, feedback: feedbackMap.clarity });
-    if (rhythm) derived.push({ name:'rhythm', value: rhythm, feedback: feedbackMap.rhythm });
-
-    const baseNames = derived.map(d => d.name);
-    normalized.forEach(d => {
-      if (!baseNames.includes(d.name)) {
-        derived.push(d);
+    // Extraer métricas de dentro de cada dimensión
+    const allMetrics: Record<string, MetricScore> = {};
+    
+    dims.forEach(dim => {
+      if (dim.metrics) {
+        Object.entries(dim.metrics).forEach(([key, value]) => {
+          allMetrics[key] = value as MetricScore;
+        });
       }
     });
 
-    setDimensions(derived);
-
-    // Extraer métricas detalladas si vienen desde el backend
-    const extended = results as ResultsWithMetrics;
-    const metricsMap = extended.metrics || {};
     const metricKeys = [
       'precision_transcription',
       'words_per_minute',
@@ -102,7 +74,7 @@ export default function ScorePage() {
 
     const metricsArray: Array<{ name: string; label: string; value: number }> = metricKeys
       .map((key) => {
-        const metric = metricsMap[key];
+        const metric = allMetrics[key];
         if (!metric) return null;
         const score = typeof metric.score === 'number' ? Math.round(metric.score) : 0;
         return {
@@ -118,11 +90,15 @@ export default function ScorePage() {
     setLoading(false);
   }, []);
 
-  // useEffect comentado: no se conecta al backend
-  
-/*   useEffect(() => {
+  // Conectar con el backend para obtener resultados
+  useEffect(() => {
     const fetchAndProcess = async () => {
       try {
+        const sessionId = sessionStorage.getItem('session_id');
+        if (!sessionId) {
+          throw new Error('No hay sesión activa. Por favor inicia un nuevo ejercicio.');
+        }
+        
         const fetched = await getResults();
         updateMetrics(fetched);
       } catch (err) {
@@ -132,43 +108,6 @@ export default function ScorePage() {
       }
     };
     fetchAndProcess();
-  }, [updateMetrics]);
-  */
-
-  // Datos mock para desarrollo sin backend (incluye métricas)
-  useEffect(() => {
-    const mockResults: ResultsWithMetrics = {
-      session_id: 'mock-session-123',
-      overallScore: 75,
-      dimensions: [
-        {
-          name: 'vocabulary',
-          score: 80,
-          feedback: 'Practica ampliar tu variedad de palabras y evita repeticiones frecuentes.'
-        },
-        {
-          name: 'clarity',
-          score: 70,
-          feedback: 'Tu claridad mejora evitando muletillas y articulando cada sílaba.'
-        },
-        {
-          name: 'rhythm',
-          score: 75,
-          feedback: 'Mantén un ritmo constante; evita acelerarte o hacer pausas muy largas.'
-        }
-      ],
-      metrics: {
-        precision_transcription: { raw: 0.9, score: 82 },
-        words_per_minute: { raw: 130, score: 78 },
-        filler_word_per_minute: { raw: 1.5, score: 88 },
-        lexical_variability: { raw: 0.55, score: 80 },
-      }
-    };
-    
-    // Simular un pequeño delay para mantener la experiencia de carga
-    setTimeout(() => {
-      updateMetrics(mockResults);
-    }, 500);
   }, [updateMetrics]);
 
   // (Placeholder) Si en el futuro se reciben análisis textuales separados
@@ -201,7 +140,10 @@ export default function ScorePage() {
     );
   }
 
-  const getDim = (name: string) => dimensions.find(d => d.name === name)?.value || 0;
+  const getDim = (name: string) => {
+    const dim = dimensions.find(d => d.name.toLowerCase() === name.toLowerCase());
+    return dim ? dim.value : 0;
+  };
   const radarData = [
     { dimension: 'Vocabulario', value: getDim('vocabulary'), fullMark: 100 },
     { dimension: 'Ritmo', value: getDim('rhythm'), fullMark: 100 },
@@ -458,12 +400,16 @@ export default function ScorePage() {
               <h2 className="text-xl font-bold text-gray-900 mb-4">
                 Feedback por Dimensión
               </h2>
-              {dimensions.filter(d => ['overall','vocabulary','clarity','rhythm'].includes(d.name)).map(d => (
+              {dimensions.map(d => (
                 <div key={d.name} className="bg-white rounded-2xl p-6 mb-4 border border-gray-200">
-                  <div className="mb-2">
+                  <div className="flex items-center justify-between mb-2">
                     <h3 className="text-lg font-bold text-indigo-500 uppercase tracking-wide">
-                      {d.name}
+                      {d.name === 'overall' ? 'General' :
+                       d.name === 'vocabulary' ? 'Vocabulario' :
+                       d.name === 'clarity' ? 'Claridad' :
+                       d.name === 'rhythm' ? 'Ritmo' : d.name}
                     </h3>
+                    <span className="text-2xl font-bold text-gray-900">{d.value}%</span>
                   </div>
                   {d.feedback && (
                     <p className="text-gray-700 leading-relaxed text-sm">
