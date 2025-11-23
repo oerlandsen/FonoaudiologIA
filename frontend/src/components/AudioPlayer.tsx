@@ -82,7 +82,7 @@ export function AudioPlayer({ audioUrl, onEnded, className = '' }: AudioPlayerPr
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-md p-4 ${className}`}>
+    <div className={`bg-white rounded-lg p-4 ${className}`}>
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
       
       <div className="flex items-center gap-4">
