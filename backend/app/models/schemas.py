@@ -166,6 +166,7 @@ class DimensionResponse(BaseModel):
     name: str = Field(..., description="Dimension name")
     score: float = Field(..., description="Dimension score (0-100)")
     feedback: str = Field(..., description="Feedback message")
+    metrics: Optional[Dict[str, MetricScore]] = Field(None, description="Related metrics for this dimension")
 
 
 class FinalScoresResponse(BaseModel):

@@ -1,9 +1,6 @@
 """FastAPI application entry point."""
-import io
-import json
 import logging
-import os
-from typing import Optional, Any, Tuple
+from typing import Optional, Any
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Form, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,292 +22,14 @@ from app.models.db_models import Transcription as TranscriptionModel, Metric as 
 from app.database import get_db
 from app.services.eleven_labs import ElevenLabsService
 from app.services.metrics_service import calculate_metrics, get_resources_status
-from app.metrics.scores import normalize_metric
-
-
-# ===========================
-# Helper functions for /transcript
-# ===========================
-
-def _calculate_audio_duration(
-    transcription_response: Any,
-    audio_data: bytes,
-    n_words: Optional[int]
-) -> Tuple[Optional[float], Optional[int]]:
-    """Calculate audio duration and word count from transcription response.
-    
-    Returns:
-        Tuple of (audio_s, n_words)
-    """
-    audio_s = None
-    word_count = n_words
-    
-    # Try to get audio duration from words timing if available
-    if hasattr(transcription_response, 'words') and transcription_response.words:
-        words_list = transcription_response.words
-        if words_list:
-            audio_s = words_list[-1].end - words_list[0].start
-    
-    # Calculate word count from transcription text
-    if hasattr(transcription_response, 'text') and transcription_response.text:
-        word_count = len(transcription_response.text.split())
-    
-    # Try to get audio duration from file metadata if words timing is not available
-    if audio_s is None:
-        try:
-            from mutagen import File as MutagenFile
-            audio_file = io.BytesIO(audio_data)
-            audio_file.seek(0)
-            mutagen_file = MutagenFile(audio_file)
-            if (mutagen_file is not None and 
-                hasattr(mutagen_file, 'info') and 
-                hasattr(mutagen_file.info, 'length')):
-                audio_s = mutagen_file.info.length
-        except (ImportError, Exception):
-            pass
-        
-        # Fallback: estimate duration from word count (~150 WPM = 2.5 words/second)
-        if audio_s is None and word_count and word_count > 0:
-            audio_s = word_count / 2.5
-    
-    return audio_s, word_count
-
-
-def _get_or_create_exercise(
-    db: Session,
-    stage_id: int,
-    exercise_id: int
-) -> ExerciseModel:
-    """Get exercise from database or create it if it doesn't exist."""
-    exercise = db.query(ExerciseModel).filter(
-        ExerciseModel.exercise_id == exercise_id
-    ).first()
-    
-    if not exercise:
-        exercise = ExerciseModel(
-            stage_id=stage_id,
-            exercise_id=exercise_id,
-            exercise_content=f"Auto-created exercise {exercise_id}",
-        )
-        db.add(exercise)
-        db.flush()
-    
-    return exercise
-
-
-def _filter_metrics_by_stage(
-    all_metrics: dict[str, MetricScore],
-    stage_id: int
-) -> dict[str, MetricScore]:
-    """Filter metrics based on stage_id requirements."""
-    if stage_id == 1:
-        allowed_metrics = [
-            "precision_transcription",
-            "words_per_minute",
-            "filler_word_per_minute"
-        ]
-    else:  # stage_id == 2 or 3
-        allowed_metrics = [
-            "words_per_minute",
-            "filler_word_per_minute",
-            "lexical_variability"
-        ]
-    
-    return {
-        k: v for k, v in all_metrics.items()
-        if k in allowed_metrics
-    }
-
-
-def _calculate_dimensions(
-    metrics_dict: dict[str, MetricScore],
-    stage_id: int
-) -> DimensionScores:
-    """Calculate dimension scores based on stage_id and filtered metrics."""
-    # Calculate rhythm from WPM and FPM (common for all stages)
-    rhythm_scores = [
-        metrics_dict[k].score
-        for k in ["words_per_minute", "filler_word_per_minute"]
-        if k in metrics_dict
-    ]
-    rhythm = sum(rhythm_scores) / len(rhythm_scores) if rhythm_scores else None
-    
-    if stage_id == 1:
-        # Stage 1: clarity from precision, rhythm from WPM + FPM
-        clarity = (
-            metrics_dict["precision_transcription"].score
-            if "precision_transcription" in metrics_dict
-            else None
-        )
-        return DimensionScores(
-            clarity=clarity,
-            rhythm=rhythm,
-            vocabulary=None,
-        )
-    else:  # stage_id == 2 or 3
-        # Stage 2/3: rhythm from WPM + FPM, vocabulary from lexical_variability
-        vocabulary = (
-            metrics_dict["lexical_variability"].score
-            if "lexical_variability" in metrics_dict
-            else None
-        )
-        return DimensionScores(
-            clarity=None,
-            rhythm=rhythm,
-            vocabulary=vocabulary,
-        )
-
-
-def _save_transcription_and_metrics(
-    db: Session,
-    stage_id: int,
-    exercise_id: int,
-    session_id: int,
-    transcription_text: str,
-    audio_s: Optional[float],
-    metrics_dict: dict[str, MetricScore],
-) -> None:
-    """Save transcription and metrics to database."""
-    # Save transcription
-    db_transcription = TranscriptionModel(
-        stage_id=stage_id,
-        transcription=transcription_text,
-        length=audio_s if audio_s else 0.0,
-        exercise_id=exercise_id,
-        session_id=session_id,
-    )
-    db.add(db_transcription)
-    db.flush()
-    
-    # Save metrics
-    for metric_name, metric_score in metrics_dict.items():
-        db_metric = MetricModel(
-            stage_id=stage_id,
-            name=metric_name,
-            value=metric_score.raw,
-            score=metric_score.score,
-            session_id=session_id,
-        )
-        db.add(db_metric)
-    
-    db.commit()
-    logger.info(
-        f"✓ Saved transcription and {len(metrics_dict)} metrics "
-        f"for session_id={session_id}"
-    )
-
-
-def _calculate_final_scores(
-    db: Session,
-    session_id: int
-) -> FinalScoresResponse:
-    """Calculate final scores for stage_id == 3 by aggregating all session metrics."""
-    # Try to use cached parameters from metrics_service first (more efficient)
-    try:
-        from app.services.metrics_service import _parameters
-        if _parameters is not None:
-            parameters = _parameters
-        else:
-            raise AttributeError("Parameters not cached")
-    except (ImportError, AttributeError):
-        # Fallback: load from file using same path resolution as metrics_service
-        metrics_dir = os.path.join(os.path.dirname(__file__), "..", "metrics")
-        parameters_path = os.path.join(metrics_dir, "parameters.json")
-        # Resolve the path to handle .. correctly
-        parameters_path = os.path.abspath(parameters_path)
-        
-        if not os.path.exists(parameters_path):
-            raise FileNotFoundError(
-                f"parameters.json not found at: {parameters_path}. "
-                f"Current working directory: {os.getcwd()}, "
-                f"__file__: {__file__}"
-            )
-        
-        with open(parameters_path, "r", encoding="utf-8") as f:
-            parameters = json.load(f)
-    
-    metrics_cfg = parameters.get("metrics", {})
-    
-    # Query all metrics for the session
-    session_metrics = db.query(MetricModel).filter(
-        MetricModel.session_id == session_id
-    ).all()
-    
-    # Group metrics by name
-    metrics_by_name: dict[str, list[float]] = {}
-    for metric in session_metrics:
-        if metric.name not in metrics_by_name:
-            metrics_by_name[metric.name] = []
-        metrics_by_name[metric.name].append(metric.value)
-    
-    # Normalize metrics and calculate averages
-    normalized_scores: dict[str, list[float]] = {}
-    for metric_name, raw_values in metrics_by_name.items():
-        if metric_name in metrics_cfg:
-            cfg = metrics_cfg[metric_name]
-            scores = []
-            for raw_value in raw_values:
-                try:
-                    score = normalize_metric(
-                        raw_value=raw_value,
-                        min_value=cfg["min_value"],
-                        max_value=cfg["max_value"],
-                        ideal_min=cfg["ideal_min"],
-                        ideal_max=cfg["ideal_max"],
-                    )
-                    scores.append(score)
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to normalize {metric_name} "
-                        f"with value {raw_value}: {e}"
-                    )
-            
-            if scores:
-                normalized_scores[metric_name] = scores
-    
-    # Calculate dimension averages
-    clarity_scores = normalized_scores.get("precision_transcription", [])
-    clarity = (
-        sum(clarity_scores) / len(clarity_scores)
-        if clarity_scores else None
-    )
-    
-    rhythm_scores = []
-    rhythm_scores.extend(normalized_scores.get("words_per_minute", []))
-    rhythm_scores.extend(normalized_scores.get("filler_word_per_minute", []))
-    rhythm = (
-        sum(rhythm_scores) / len(rhythm_scores)
-        if rhythm_scores else None
-    )
-    
-    vocabulary_scores = normalized_scores.get("lexical_variability", [])
-    vocabulary = (
-        sum(vocabulary_scores) / len(vocabulary_scores)
-        if vocabulary_scores else None
-    )
-    
-    # Build final scores response
-    dimensions_list = []
-    if clarity is not None:
-        dimensions_list.append(DimensionResponse(
-            name="clarity",
-            score=round(clarity, 2),
-            feedback=""
-        ))
-    if rhythm is not None:
-        dimensions_list.append(DimensionResponse(
-            name="rhythm",
-            score=round(rhythm, 2),
-            feedback=""
-        ))
-    if vocabulary is not None:
-        dimensions_list.append(DimensionResponse(
-            name="vocabulary",
-            score=round(vocabulary, 2),
-            feedback=""
-        ))
-    
-    return FinalScoresResponse(dimensions=dimensions_list)
+from app.services.transcript_service import (
+    calculate_audio_duration,
+    get_or_create_exercise,
+    filter_metrics_by_stage,
+    calculate_dimensions,
+    save_transcription_and_metrics,
+)
+from app.services.scores_service import calculate_final_scores
 
 
 app = FastAPI(
@@ -418,6 +137,27 @@ async def get_exercise(
         logger.error(f"Failed to get exercise: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get exercise: {str(e)}") 
 
+@app.get("/results", response_model=FinalScoresResponse, tags=["results"])
+async def get_results(
+    session_id: int = Query(..., description="Session ID"),
+    db: Session = Depends(get_db),
+) -> FinalScoresResponse:
+    """Get final scores for a session.
+    
+    Calculates and returns aggregated final scores across all exercises
+    in the session, including dimension scores (clarity, rhythm, vocabulary).
+    """
+    try:
+        final_scores = await calculate_final_scores(db, session_id)
+        return final_scores
+    except Exception as e:
+        logger.error(
+            f"Failed to calculate final scores: {str(e)}",
+            exc_info=True
+        )
+        # Return empty final scores response on error
+        return FinalScoresResponse(dimensions=[])
+
 @app.post("/transcript", tags=["transcription"])
 async def transcript(
     audio: UploadFile = File(...),
@@ -446,14 +186,14 @@ async def transcript(
             )
         
         # Calculate audio duration and word count
-        audio_s, n_words = _calculate_audio_duration(
+        audio_s, n_words = calculate_audio_duration(
             transcription_response,
             audio_data,
             None
         )
         
         # Get or create exercise
-        exercise = _get_or_create_exercise(db, stage_id, exercise_id)
+        exercise = get_or_create_exercise(db, stage_id, exercise_id)
         
         # Determine reference transcription for stage_id == 1
         reference_transcription = (
@@ -484,10 +224,10 @@ async def transcript(
                 }
                 
                 # Filter metrics based on stage_id
-                metrics_dict = _filter_metrics_by_stage(all_metrics, stage_id)
+                metrics_dict = filter_metrics_by_stage(all_metrics, stage_id)
                 
                 # Calculate dimensions
-                dimensions = _calculate_dimensions(metrics_dict, stage_id)
+                dimensions = calculate_dimensions(metrics_dict, stage_id)
                 
                 metrics_response = MetricsResponse(
                     metrics=metrics_dict,
@@ -501,7 +241,7 @@ async def transcript(
         
         # Save to database
         try:
-            _save_transcription_and_metrics(
+            save_transcription_and_metrics(
                 db=db,
                 stage_id=stage_id,
                 exercise_id=exercise_id,
@@ -511,20 +251,6 @@ async def transcript(
                 metrics_dict=metrics_dict,
             )
             
-            # For stage_id == 3, always return final scores
-            if stage_id == 3:
-                try:
-                    final_scores = _calculate_final_scores(db, session_id)
-                    return JSONResponse(content=final_scores.model_dump())
-                except Exception as e:
-                    logger.error(
-                        f"Failed to calculate final scores: {str(e)}",
-                        exc_info=True
-                    )
-                    # Return empty final scores response on error
-                    return JSONResponse(
-                        content=FinalScoresResponse(dimensions=[]).model_dump()
-                    )
         
         except Exception as db_error:
             db.rollback()
