@@ -36,7 +36,7 @@ export default function HomePage() {
             />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">
-            ¡Hola Martín!
+            ¡Hola!
           </h2>
           <p className="text-base text-gray-600 text-center">
             Bienvenid@, mejora la fluidez de tus mensajes y entrena con nosotros.
@@ -48,8 +48,7 @@ export default function HomePage() {
           {/* Enviar mensaje corregido */}
           <button
             onClick={() => {
-              // Funcionalidad pendiente
-              console.log('Enviar mensaje corregido - Próximamente');
+              navigate('/enhance');
             }}
             className="bg-white rounded-2xl p-6 border-2 border-gray-200 hover:border-indigo-500 hover:shadow-lg transition-all flex flex-col items-center text-center group"
           >
@@ -57,10 +56,10 @@ export default function HomePage() {
               <Send className="text-indigo-500" size={28} />
             </div>
             <h3 className="text-lg font-bold text-gray-900 mb-2">
-              Enviar mensaje corregido
+              Optimizar
             </h3>
             <p className="text-sm text-gray-600">
-              Graba un audio y recibe una versión mejorada
+              Graba tu voz y recibe una versión clara con sugerencias
             </p>
           </button>
 
