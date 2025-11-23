@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { useNavigate } from 'react-router-dom';
-import { Mic, Square, ArrowLeft } from 'lucide-react';
+import { Mic, Square, ArrowLeft, Share2, Headphones } from 'lucide-react';
 import { createAudioUrl, revokeAudioUrl } from '../utils/audioUtils';
 import { AudioPlayer } from './AudioPlayer';
 import type { AudioRecording } from '../types/audio';
@@ -242,6 +242,59 @@ export function EnhanceSpeech() {
     }
   }
 
+  async function handleShare() {
+    if (!enhancedAudioUrl) return;
+
+    try {
+      // Fetch the blob from the URL
+      const response = await fetch(enhancedAudioUrl);
+      const blob = await response.blob();
+      const file = new File([blob], 'audio-mejorado.mp3', { type: 'audio/mpeg' });
+
+      // Try Web Share API first (mobile devices)
+      if (navigator.share) {
+        try {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'Audio mejorado',
+              text: 'Escucha mi audio mejorado'
+            });
+            return;
+          }
+        } catch (shareErr) {
+          // If canShare check fails or share fails, fall through to download
+          console.log('Web Share API not available, using download fallback');
+        }
+      }
+
+      // Fallback: Download the file
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'audio-mejorado.mp3';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error sharing audio:', err);
+      // Fallback to download if share fails
+      if (err instanceof Error && err.name !== 'AbortError') {
+        const response = await fetch(enhancedAudioUrl);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'audio-mejorado.mp3';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -255,6 +308,7 @@ export function EnhanceSpeech() {
             >
               <ArrowLeft size={20} />
             </button>
+            <h2 className="text-lg font-semibold text-gray-900">Depurar con IA ✨</h2>
           </div>
          
         </div>
@@ -268,7 +322,7 @@ export function EnhanceSpeech() {
           <button
             onClick={handleCentralToggle}
             aria-label={isRecording ? 'Detener grabación' : 'Iniciar grabación'}
-            className={`w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto shadow-lg transition-all ${
+            className={`w-24 h-24 rounded-full flex items-center justify-center mt-6 mb-4 mx-auto shadow-lg transition-all ${
               isRecording
                 ? 'bg-red-500 hover:bg-red-600'
                 : 'bg-indigo-500 hover:bg-indigo-600'
@@ -305,10 +359,79 @@ export function EnhanceSpeech() {
 
             {enhancedAudioUrl && (
               <div className="mt-4">
-                <h3 className="text-sm font-semibold text-indigo-700 mb-2">Audio mejorado:</h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-indigo-700">Audio mejorado:</h3>
+                  <button
+                    onClick={handleShare}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                    aria-label="Compartir audio"
+                  >
+                    <Share2 size={16} />
+                    <span>Compartir</span>
+                  </button>
+                </div>
                 <AudioPlayer audioUrl={enhancedAudioUrl} />
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Steps Cards */}
+      <div className="mt-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Pasos
+        </h3>
+        <div className="space-y-3">
+          <div className="bg-white rounded-2xl p-5 flex items-center border border-gray-200">
+            <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mr-4">
+              <Mic className="text-indigo-500" size={24} />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center mb-1">
+                <span className="text-sm font-semibold text-gray-600 mr-2">
+                  Paso 1
+                </span>
+                <span className="text-base font-semibold text-gray-900">
+                  Graba
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">Graba tu audio</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 flex items-center border border-gray-200">
+            <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mr-4">
+              <Headphones className="text-indigo-500" size={24} />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center mb-1">
+                <span className="text-sm font-semibold text-gray-600 mr-2">
+                  Paso 2
+                </span>
+                <span className="text-base font-semibold text-gray-900">
+                  Lee y Escucha
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">Revisa la transcripción y escucha el audio mejorado</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 flex items-center border border-gray-200">
+            <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mr-4">
+              <Share2 className="text-indigo-500" size={24} />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center mb-1">
+                <span className="text-sm font-semibold text-gray-600 mr-2">
+                  Paso 3
+                </span>
+                <span className="text-base font-semibold text-gray-900">
+                  Comparte
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">Comparte tu audio mejorado</p>
+            </div>
           </div>
         </div>
       </div>

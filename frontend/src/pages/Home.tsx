@@ -1,4 +1,4 @@
-import { Mic, BookOpen, Image as ImageIcon, MessageCircle, Send } from 'lucide-react';
+import { Mic, BookOpen, Image as ImageIcon, MessageCircle, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getSession } from '../services/api';
 
@@ -36,10 +36,10 @@ export default function HomePage() {
             />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">
-            ¡Hola!
+            Hola!
           </h2>
           <p className="text-base text-gray-600 text-center">
-            Bienvenid@, mejora la fluidez de tus mensajes y entrena con nosotros.
+            Bienvenid@, mejora tu fluidez al hablar y practica con nosotros
           </p>
         </div>
 
@@ -53,13 +53,13 @@ export default function HomePage() {
             className="bg-white rounded-2xl p-6 border-2 border-gray-200 hover:border-indigo-500 hover:shadow-lg transition-all flex flex-col items-center text-center group"
           >
             <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center mb-4 group-hover:bg-indigo-100 transition-colors">
-              <Send className="text-indigo-500" size={28} />
+              <Sparkles className="text-indigo-500" size={28} />
             </div>
             <h3 className="text-lg font-bold text-gray-900 mb-2">
-              Optimizar
+              Depurar
             </h3>
             <p className="text-sm text-gray-600">
-              Graba tu voz y recibe una versión clara con sugerencias
+              Graba y mejorar tu discurso con IA
             </p>
           </button>
 
