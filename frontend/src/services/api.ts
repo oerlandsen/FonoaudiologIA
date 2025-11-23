@@ -7,7 +7,6 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export async function getSession(): Promise<string | null> {
   try {
-    console.log(API_BASE_URL);
     const response = await fetch(`${API_BASE_URL}/start`, {
       method: 'POST',
     });
