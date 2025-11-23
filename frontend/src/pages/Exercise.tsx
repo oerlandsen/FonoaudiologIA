@@ -2,6 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ExerciseResponse } from '../types/requests';
 import exampleService from '../services/exampleService';
+import { useSpeechRate } from '../hooks/useSpeechRate';
+import SpeechRateIndicator from '../components/SpeechRateIndicator';
 import {
   ArrowLeft,
   Mic,
@@ -37,6 +39,9 @@ export default function ExercisePage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Hook para calcular velocidad de habla en tiempo real
+  const { wordsPerMinute } = useSpeechRate(isRecording);
 
   // Helpers: mapping and stage resolution
   const mapStageToType = (stageNum: number): 'read' | 'description' | 'question' =>
@@ -346,6 +351,16 @@ export default function ExercisePage() {
                 ? 'Toca para detener la grabación'
                 : 'Toca para comenzar a grabar'}
             </p>
+
+            {/* Indicador de velocidad de habla en tiempo real */}
+            {isRecording && (
+              <div className="mt-6">
+                <SpeechRateIndicator 
+                  wordsPerMinute={wordsPerMinute} 
+                  isActive={isRecording}
+                />
+              </div>
+            )}
 
             {/* Mensaje informativo - Grabación finalizada */}
             {recordingUri && (

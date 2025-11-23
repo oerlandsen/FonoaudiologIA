@@ -20,6 +20,7 @@ services:
       - "8000:8000"
     environment:
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DEBUG=false
       - HOST=0.0.0.0
       - PORT=8000
@@ -27,7 +28,7 @@ services:
     volumes:
       - ./app:/app/app
       - ./seed.py:/app/seed.py
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: /bin/sh -c "python /app/seed.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     restart: unless-stopped
     depends_on:
       - db

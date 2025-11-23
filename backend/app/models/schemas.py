@@ -159,3 +159,17 @@ class SessionResponse(BaseModel):
         """Pydantic config."""
         from_attributes = True
 
+
+class DimensionResponse(BaseModel):
+    """Dimension response for final scores."""
+    
+    name: str = Field(..., description="Dimension name")
+    score: float = Field(..., description="Dimension score (0-100)")
+    feedback: str = Field(..., description="Feedback message")
+    metrics: Optional[Dict[str, MetricScore]] = Field(None, description="Related metrics for this dimension")
+
+
+class FinalScoresResponse(BaseModel):
+    """Final scores response model."""
+    
+    dimensions: List[DimensionResponse] = Field(..., description="List of dimension scores")

@@ -3,7 +3,6 @@ import type { AudioRecording, AudioUploadResponse } from '../types/audio';
 import type { ResultsResponse, ExerciseResponse } from '../types/requests';
 import { prepareAudioForUpload } from '../utils/audioUtils';
 
-// Vite only exposes env variables prefixed with VITE_
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export async function getSession(): Promise<string | null> {
@@ -79,7 +78,12 @@ export async function uploadTranscript(
 
 export async function getResults(): Promise<ResultsResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/results`, {
+    const sessionId = sessionStorage.getItem('session_id');
+    if (!sessionId) {
+      throw new Error('No session ID found. Please start a new exercise.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/results?session_id=${sessionId}`, {
       method: 'GET',
     });
 
