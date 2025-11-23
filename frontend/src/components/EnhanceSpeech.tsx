@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
-import { Mic, Square } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Mic, Square, ArrowLeft } from 'lucide-react';
 import { createAudioUrl, revokeAudioUrl } from '../utils/audioUtils';
 import { AudioPlayer } from './AudioPlayer';
 import type { AudioRecording } from '../types/audio';
@@ -16,6 +17,7 @@ import fillerWordsJson from '../utils/filler_words.json';
  * Recommended: move these calls to a backend for real deployments.
  */
 export function EnhanceSpeech() {
+  const navigate = useNavigate();
   const [recording, setRecording] = useState<AudioRecording | null>(null);
   const [_transcript, setTranscript] = useState<string>('');
   const [_cleanedText, setCleanedText] = useState<string>('');
@@ -349,7 +351,17 @@ export function EnhanceSpeech() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Enhance Speech</h2>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              aria-label="Volver al inicio"
+              className="p-2 rounded-full text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 transition"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <h2 className="text-lg font-semibold text-gray-900">Enhance Speech</h2>
+          </div>
           <div className="text-sm text-gray-600">Estado: <strong>{status || '—'}</strong></div>
         </div>
       </div>
@@ -470,7 +482,7 @@ export function EnhanceSpeech() {
               <div className="flex justify-center mb-3">
                 <div className="inline-flex items-center gap-1 rounded-full bg-indigo-50/70 border border-indigo-200/70 p-1 shadow-inner">
                   <button onClick={() => setActivePlayer('original')} className={`px-4 py-1.5 rounded-full text-sm ${activePlayer==='original' ? 'bg-indigo-500 text-white' : 'text-gray-700 hover:bg-indigo-100'}`}>Original</button>
-                  <button onClick={() => setActivePlayer('enhanced')} disabled={!enhancedAudioUrl} className={`px-4 py-1.5 rounded-full text-sm ${activePlayer==='enhanced' ? 'bg-indigo-500 text-white' : 'text-gray-700 hover:bg-indigo-100'} ${!enhancedAudioUrl ? 'opacity-50 cursor-not-allowed' : ''}`}>Mejorado</button>
+                  <button onClick={() => setActivePlayer('enhanced')} disabled={!enhancedAudioUrl} className={`px-4 py-1.5 rounded-full text-sm ${activePlayer==='enhanced' ? 'bg-indigo-500 text-white' : 'text-gray-700 hover:bg-indigo-100'} ${!enhancedAudioUrl ? 'opacity-50 cursor-not-allowed' : ''}`}>Revisado</button>
                   <button onClick={() => setActivePlayer('feedback')} disabled={!feedbackText} className={`px-4 py-1.5 rounded-full text-sm ${activePlayer==='feedback' ? 'bg-indigo-500 text-white' : 'text-gray-700 hover:bg-indigo-100'} ${!feedbackText ? 'opacity-50 cursor-not-allowed' : ''}`}>Feedback</button>
                 </div>
               </div>
