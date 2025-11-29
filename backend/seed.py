@@ -12,7 +12,9 @@ EXERCISES_DATA = {
         "Pasar cuatro horas buscando un error fatal solo para descubrir que te faltaba un punto y coma es un rito de iniciación. En ese momento, sientes una mezcla perfecta de alivio absoluto y ganas de lanzar la computadora por la ventana. Es la humildad forzada e inevitable que nos regala la programación.",
         "A estas alturas de la competencia, mi tipo de sangre es oficialmente Red Bull positivo. Existe un delicado equilibrio entre la lucidez genial y la taquicardia incontrolable. Escribir código en este estado es como tocar jazz: improvisas, nadie entiende qué estás haciendo, pero esperas que el resultado final suene a música.",
         "La frase más peligrosa en el desarrollo de software no es 'tengo un error', sino 'en mi local funciona'. Es la mentira piadosa que nos decimos antes de subir a producción. El servidor, sin embargo, es un juez cruel que no entiende de excusas, solo de logs de errores en rojo brillante.",
-        "El silencio antes de una demo es ensordecedor. Tienes exactamente minutos contados para justificar 48 horas de mala alimentación y código espagueti. Si la app habla bien, eres un visionario; si falla, siempre podrás culpar al Wi-Fi del recinto. Respirar profundo es opcional, pero altamente recomendado para no desmayarse."
+        "El silencio antes de una demo es ensordecedor. Tienes exactamente minutos contados para justificar 48 horas de mala alimentación y código espagueti. Si la app habla bien, eres un visionario; si falla, siempre podrás culpar al Wi-Fi del recinto. Respirar profundo es opcional, pero altamente recomendado para no desmayarse.",
+        "Hola, este es un texto de ejemplo para probar la precisión de la transcripción.",
+        "El silencio antes de una demo es ensordecedor. Tienes exactamente minutos contados para justificar cuarenta y ocho horas de mala alimentación y código spaghetti. Si la app habla bien, eres un visionario. Si falla, siempre podrás culpar al wifi del recinto. Respirar profundo es opcional, pero altamente recomendado para no desmayarse."
     ],
     "description": [
         "https://consequence.net/wp-content/uploads/2021/10/community.jpeg",
