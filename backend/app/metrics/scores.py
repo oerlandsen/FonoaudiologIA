@@ -140,6 +140,25 @@ def normalize_metric(
 #  Metric implementations
 # ==========================
 
+import logging
+
+# Create a logger for this module and set level explicitly
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# Ensure handler exists and level is set
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+else:
+    # If handlers exist, ensure level is set
+    logger.setLevel(logging.DEBUG)
+    for handler in logger.handlers:
+        handler.setLevel(logging.DEBUG)
+
 def _metric_precision_transcription(
     transcription: str,
     reference_transcription: str
@@ -151,17 +170,25 @@ def _metric_precision_transcription(
     Precision = 100 * (correct_tokens / total_pred_tokens)
     where "correct" means token matches at the same position.
     """
+    logger.debug(f"Transcription: {transcription}")
+    logger.debug(f"Reference transcription: {reference_transcription}")
     pred_tokens = _tokenize(transcription)
     ref_tokens = _tokenize(reference_transcription)
+    logger.debug(f"Ref tokens: {ref_tokens}")
+    logger.debug(f"Pred tokens: {pred_tokens}")
+    logger.debug(f"Pred length: {len(pred_tokens)}, Ref length: {len(ref_tokens)}")
 
     total_pred = len(pred_tokens)
     if total_pred == 0:
         return 0.0
 
     aligned_len = min(total_pred, len(ref_tokens))
+    logger.debug(f"Aligned length: {aligned_len}")
     correct = sum(1 for i in range(aligned_len) if pred_tokens[i] == ref_tokens[i])
-
-    return 100.0 * correct / total_pred
+    logger.debug(f"Correct tokens: {correct} out of {total_pred} predicted tokens")
+    precision = 100.0 * correct / total_pred
+    logger.info(f"Precision: {precision:.2f}%")
+    return precision
 
 
 def _metric_words_per_minute(audio_ms: int, num_words: int) -> Optional[float]:
@@ -297,7 +324,9 @@ def measure_speech_metrics(
     # ------------------------
     metric_name = "precision_transcription"
     cfg = metrics_cfg.get(metric_name)
+    logger.debug(f"Checking precision_transcription: cfg={cfg is not None}, transcription={transcription is not None}, reference_transcription={reference_transcription is not None}")
     if cfg and transcription and reference_transcription:
+        logger.debug(f"Calling _metric_precision_transcription with transcription length={len(transcription) if transcription else 0}, reference length={len(reference_transcription) if reference_transcription else 0}")
         raw_value = _metric_precision_transcription(transcription, reference_transcription)
         score = normalize_metric(
             raw_value,
